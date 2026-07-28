@@ -63,13 +63,12 @@ public class PlayerController : MonoBehaviour
             Vector3 targetWorldPos = new Vector3(step.x, step.y, step.z);
 
             Vector3 moveDirection = (targetWorldPos - startPos);
-            moveDirection.y = 0; // Ignora a diferença de altura para não tombar o pirata pra cima/baixo!
+            moveDirection.y = 0; 
 
             if (moveDirection.sqrMagnitude > 0.001f)
             {
                 transform.rotation = Quaternion.LookRotation(moveDirection);
             }
-            // -------------------------------------------------------------
 
             if (stackManager != null)
             {
