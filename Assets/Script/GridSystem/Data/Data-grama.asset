@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 228093f0cbb388a46adb0d84379d3ef5, type: 3}
+  m_Name: Data-grama
+  m_EditorClassIdentifier: Assembly-CSharp::BlockData
+  blockName: Grama
+  prefab: {fileID: 1238254283629180148, guid: bed28ece3c3d866478145a6317da910f, type: 3}
+  isWalkable: 1
+  debugColor: {r: 0.4761926, g: 0.8207547, b: 0.4761926, a: 1}
