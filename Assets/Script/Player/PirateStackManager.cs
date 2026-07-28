@@ -106,12 +106,25 @@ public class PirateStackManager : MonoBehaviour
             BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
             if (clickedTile != null)
             {
+                if (clickedTile.isWaterTile)
+                {
+                    Collider[] collidersInWater = Physics.OverlapSphere(clickedTile.transform.position, 0.4f);
+                    foreach (Collider col in collidersInWater)
+                    {
+                        if (col.CompareTag("DroppedPirate") || (col.transform.parent != null && col.transform.parent.CompareTag("DroppedPirate")))
+                        {
+                            GameObject rootPirate = col.CompareTag("DroppedPirate") ? col.gameObject : col.transform.parent.gameObject;
+                            TryPickupPirate(rootPirate);
+                            return;
+                        }
+                    }
+                }
+
                 TryDropPirate(clickedTile);
             }
         }
     }
 
-    #region --- RECOLHER PIRATA ---
 
     private void TryPickupPirate(GameObject targetPirate)
     {
@@ -146,10 +159,23 @@ public class PirateStackManager : MonoBehaviour
     {
         isBusy = true;
 
-        // Dispara o Stretch ao ser puxado do chão
+        Vector3Int currentPirateGridPos = Vector3Int.RoundToInt(pirate.transform.position);
+        if (GridManager.Instance != null)
+        {
+            BlockTile waterTile = GridManager.Instance.GetTileAt(currentPirateGridPos);
+            if (waterTile != null && waterTile.isWaterTile)
+            {
+                if (waterTile.data != null)
+                {
+                    waterTile.data.isWalkable = false; 
+                }
+            }
+        }
+
         PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();
         if (juice != null)
         {
+            juice.StopFloating();
             juice.TriggerPickupStretch();
         }
 
@@ -191,7 +217,6 @@ public class PirateStackManager : MonoBehaviour
         isBusy = false;
     }
 
-    #endregion
 
     #region --- SOLTAR PIRATA ---
 
@@ -202,47 +227,52 @@ public class PirateStackManager : MonoBehaviour
         Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
         Vector3Int groundGridPos = targetTile.gridPosition;
 
-        if (GridManager.Instance != null)
-        {
-            BlockTile tileOnGround = GridManager.Instance.GetTileAt(groundGridPos);
-            if (tileOnGround == null)
-            {
-                Debug.LogWarning("[Totem] Não há bloco de chão nesta posição!");
-                return;
-            }
-
-            Vector3Int airPosAbove = groundGridPos + Vector3Int.up;
-            if (GridManager.Instance.GetTileAt(airPosAbove) != null)
-            {
-                Debug.LogWarning("[Totem] Posição acima já está ocupada por um bloco!");
-                return;
-            }
-        }
-
         int distanceX = Mathf.Abs(playerPos.x - groundGridPos.x);
         int distanceZ = Mathf.Abs(playerPos.z - groundGridPos.z);
 
-        if (distanceX + distanceZ == 1)
+        if (distanceX + distanceZ != 1)
+        {
+            Debug.Log("[Totem] Você precisa estar ao lado do bloco para soltar o pirata!");
+            return;
+        }
+
+        if (targetTile.isWaterTile)
         {
             int topIndex = stackedPirates.Count - 1;
             GameObject pirateToDrop = stackedPirates[topIndex];
             stackedPirates.RemoveAt(topIndex);
 
-            StartCoroutine(DropRoutine(pirateToDrop, groundGridPos));
+            StartCoroutine(DropRoutine(pirateToDrop, groundGridPos, isWater: true));
         }
         else
         {
-            Debug.Log("[Totem] Você precisa estar ao lado do bloco para soltar o pirata!");
+            if (GridManager.Instance != null)
+            {
+                Vector3Int airPosAbove = groundGridPos + Vector3Int.up;
+                if (GridManager.Instance.GetTileAt(airPosAbove) != null)
+                {
+                    Debug.LogWarning("[Totem] Posição acima já está ocupada por um bloco!");
+                    return;
+                }
+            }
+
+            int topIndex = stackedPirates.Count - 1;
+            GameObject pirateToDrop = stackedPirates[topIndex];
+            stackedPirates.RemoveAt(topIndex);
+
+            StartCoroutine(DropRoutine(pirateToDrop, groundGridPos, isWater: false));
         }
     }
 
-    private IEnumerator DropRoutine(GameObject pirate, Vector3Int targetGridPos)
+    private IEnumerator DropRoutine(GameObject pirate, Vector3Int targetGridPos, bool isWater)
     {
         isBusy = true;
 
         Vector3 startPos = pirate.transform.position;
-        Vector3Int finalGridPos = new Vector3Int(targetGridPos.x, targetGridPos.y + 1, targetGridPos.z);
+
+        Vector3Int finalGridPos = isWater ? targetGridPos : new Vector3Int(targetGridPos.x, targetGridPos.y + 1, targetGridPos.z);
         Vector3 targetPos = new Vector3(finalGridPos.x, finalGridPos.y, finalGridPos.z);
+
         float time = 0;
 
         while (time < jumpDuration)
@@ -261,10 +291,6 @@ public class PirateStackManager : MonoBehaviour
         pirate.transform.rotation = Quaternion.identity;
 
         PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();
-        if (juice != null)
-        {
-            juice.TriggerDropSquash();
-        }
 
         pirate.tag = "DroppedPirate";
 
@@ -280,17 +306,34 @@ public class PirateStackManager : MonoBehaviour
         col.size = Vector3.one;
         col.center = Vector3.zero;
 
-        BlockTile tile = pirate.GetComponent<BlockTile>();
-        if (tile == null) tile = pirate.AddComponent<BlockTile>();
-
-        tile.enabled = true;
-
-        if (tile.data == null)
+        if (isWater)
         {
-            tile.data = defaultWalkableData;
-        }
+            BlockTile waterTile = GridManager.Instance.GetTileAt(targetGridPos);
+            if (waterTile != null && waterTile.data != null)
+            {
+                waterTile.data = Instantiate(waterTile.data);
+                waterTile.data.isWalkable = true;
+            }
 
-        tile.Setup(finalGridPos, tile.data);
+            if (juice != null)
+            {
+                juice.StartFloating();
+            }
+        }
+        else
+        {
+            if (juice != null)
+            {
+                juice.TriggerDropSquash();
+            }
+
+            BlockTile tile = pirate.GetComponent<BlockTile>();
+            if (tile == null) tile = pirate.AddComponent<BlockTile>();
+            tile.enabled = true;
+
+            if (tile.data == null) tile.data = defaultWalkableData;
+            tile.Setup(finalGridPos, tile.data);
+        }
 
         if (GridManager.Instance != null)
         {
@@ -301,6 +344,11 @@ public class PirateStackManager : MonoBehaviour
     }
 
     #endregion
+
+    public int GetStackCount()
+    {
+        return stackedPirates.Count;
+    }
 
     private void SetLayerRecursively(GameObject obj, int newLayer)
     {

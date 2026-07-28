@@ -10,9 +10,9 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 228093f0cbb388a46adb0d84379d3ef5, type: 3}
-  m_Name: Data_agua
+  m_Name: "Data_areia_movedi\xE7a"
   m_EditorClassIdentifier: Assembly-CSharp::BlockData
-  blockName: agua
-  prefab: {fileID: 1951016219182269157, guid: a6df7407e3975044ca48fa97cefb0dd9, type: 3}
+  blockName: "areia movedi\xE7a"
+  prefab: {fileID: 3791874647961419641, guid: 4564f6fd7d8281144938cd3e1cf5124f, type: 3}
   isWalkable: 1
-  debugColor: {r: 0, g: 0.75213003, b: 1, a: 1}
+  debugColor: {r: 0.990566, g: 0.43454072, b: 0.45545474, a: 1}

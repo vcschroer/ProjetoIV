@@ -59,11 +59,26 @@ public class PlayerController : MonoBehaviour
 
         foreach (Vector3Int step in path)
         {
+            Vector3Int groundPos = new Vector3Int(step.x, step.y - 1, step.z);
+            BlockTile groundTile = GridManager.Instance != null ? GridManager.Instance.GetTileAt(groundPos) : null;
+
+            if (groundTile != null && groundTile.maxAllowedHeight > 0)
+            {
+                int currentHeight = 1 + (stackManager != null ? stackManager.GetStackCount() : 0);
+
+                if (currentHeight > groundTile.maxAllowedHeight)
+                {
+                    Debug.LogWarning($"[PlayerController] Altura excessiva! O pirata tem altura {currentHeight}, mas o tile só permite {groundTile.maxAllowedHeight}. Movimento interrompido!");
+                    isMoving = false;
+                    yield break;
+                }
+            }
+
             Vector3 startPos = transform.position;
             Vector3 targetWorldPos = new Vector3(step.x, step.y, step.z);
 
             Vector3 moveDirection = (targetWorldPos - startPos);
-            moveDirection.y = 0; 
+            moveDirection.y = 0;
 
             if (moveDirection.sqrMagnitude > 0.001f)
             {
@@ -93,6 +108,16 @@ public class PlayerController : MonoBehaviour
 
             transform.position = targetWorldPos;
 
+            if (groundTile != null && groundTile.isQuicksand)
+            {
+                if (stackManager != null && stackManager.GetStackCount() > 0)
+                {
+                    Debug.Log("O peso da pilha fez a torre afundar na areia movediça!");
+                    StartCoroutine(SinkInQuicksandRoutine());
+                    yield break; 
+                }
+            }
+
             if (stackManager != null)
             {
                 stackManager.TriggerStackImpact(topToBottom: false);
@@ -100,5 +125,36 @@ public class PlayerController : MonoBehaviour
         }
 
         isMoving = false;
+    }
+
+
+    private IEnumerator SinkInQuicksandRoutine()
+    {
+        isMoving = true;
+
+        Vector3 startPos = transform.position;
+        Vector3 sinkTargetPos = startPos + new Vector3(0, -0.65f, 0);
+
+        Quaternion startRot = transform.rotation;
+        Quaternion sinkRot = startRot * Quaternion.Euler(12f, 0f, -8f);
+
+        float sinkDuration = 1.2f;
+        float elapsed = 0f;
+
+        while (elapsed < sinkDuration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / sinkDuration;
+
+            float smoothProgress = Mathf.SmoothStep(0f, 1f, progress);
+
+            transform.position = Vector3.Lerp(startPos, sinkTargetPos, smoothProgress);
+            transform.rotation = Quaternion.Slerp(startRot, sinkRot, smoothProgress);
+
+            yield return null;
+        }
+
+        transform.position = sinkTargetPos;
+        Debug.Log("Piratas presos na areia movediça. Reinicie o nível!");
     }
 }

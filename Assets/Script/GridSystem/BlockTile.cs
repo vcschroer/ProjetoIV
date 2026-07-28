@@ -8,6 +8,13 @@ public class BlockTile : MonoBehaviour
 
     private MeshRenderer meshRenderer;
 
+    [Header("Obstáculos / Altura")]
+    public int maxAllowedHeight = 0;
+    [Tooltip("Marque se este tile for um bloco de água.")]
+    public bool isWaterTile = false;
+    [Tooltip("Marque se este tile for Areia Movediça.")]
+    public bool isQuicksand = false;
+
     private void Awake()
     {
         meshRenderer = GetComponent<MeshRenderer>();
