@@ -1337,11 +1337,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: bed28ece3c3d866478145a6317da910f, type: 3}
---- !u!1 &1519357439 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 1778682455631701699, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
-  m_PrefabInstance: {fileID: 1955149788}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1666033872
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1513,7 +1508,7 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: bed28ece3c3d866478145a6317da910f, type: 3}
---- !u!1001 &1955149788
+--- !u!1001 &651928695408491602
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -1521,59 +1516,60 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 1778682455631701699, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
-      propertyPath: m_Name
-      value: Pirata Empilhado (1)
-      objectReference: {fileID: 0}
-    - target: {fileID: 3655738540757793867, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
-      propertyPath: pirateID
-      value: 2
-      objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalPosition.x
       value: 10
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalPosition.y
       value: 3
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalPosition.z
       value: -15
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalRotation.w
       value: 1
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalRotation.x
       value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalRotation.y
       value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalRotation.z
       value: -0
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 4601034709345382082, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+    - target: {fileID: 7772612363796675206, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 9181807484444457389, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
+      propertyPath: m_Name
+      value: Papagaio
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
     m_AddedComponents: []
-  m_SourcePrefab: {fileID: 100100000, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
+--- !u!1 &1778682457586700575 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 9181807484444457389, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
+  m_PrefabInstance: {fileID: 651928695408491602}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &3742920348679629682
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1650,7 +1646,7 @@ PrefabInstance:
     - target: {fileID: 5054846002286694674, guid: 71038ae0dcac4f24e9ea132e23dae547, type: 3}
       propertyPath: 'stackedPirates.Array.data[1]'
       value: 
-      objectReference: {fileID: 1519357439}
+      objectReference: {fileID: 1778682457586700575}
     - target: {fileID: 5951515465247150388, guid: 71038ae0dcac4f24e9ea132e23dae547, type: 3}
       propertyPath: m_LocalPosition.x
       value: 10
@@ -1724,4 +1720,4 @@ SceneRoots:
   - {fileID: 504588678}
   - {fileID: 8115852760731576200}
   - {fileID: 3742920348679629682}
-  - {fileID: 1955149788}
+  - {fileID: 651928695408491602}
