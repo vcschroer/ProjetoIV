@@ -68,7 +68,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 70dad46fc3008aa4d9cc9b72180eb11f, type: 2}
+  - {fileID: 2100000, guid: a00b1336df0e344428709060277eb7c9, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -127,6 +127,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PirateJuice
   bounceIntensity: 0.15
   bounceDuration: 0.2
+  dropSquashAmount: 0.35
+  dropDuration: 0.25
+  pickupStretchAmount: 0.4
+  pickupDuration: 0.25
 --- !u!1 &1778682455631701699
 GameObject:
   m_ObjectHideFlags: 0

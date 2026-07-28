@@ -59,13 +59,22 @@ public class PlayerController : MonoBehaviour
 
         foreach (Vector3Int step in path)
         {
+            Vector3 startPos = transform.position;
+            Vector3 targetWorldPos = new Vector3(step.x, step.y, step.z);
+
+            Vector3 moveDirection = (targetWorldPos - startPos);
+            moveDirection.y = 0; // Ignora a diferença de altura para não tombar o pirata pra cima/baixo!
+
+            if (moveDirection.sqrMagnitude > 0.001f)
+            {
+                transform.rotation = Quaternion.LookRotation(moveDirection);
+            }
+            // -------------------------------------------------------------
+
             if (stackManager != null)
             {
                 stackManager.OnPlayerStep();
             }
-
-            Vector3 startPos = transform.position;
-            Vector3 targetWorldPos = new Vector3(step.x, step.y, step.z);
 
             float distance = Vector3.Distance(startPos, targetWorldPos);
             float stepDuration = Mathf.Max(0.1f, distance / moveSpeed);
