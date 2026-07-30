@@ -14,5 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BlockData
   blockName: agua
   prefab: {fileID: 1951016219182269157, guid: a6df7407e3975044ca48fa97cefb0dd9, type: 3}
-  isWalkable: 1
+  isWalkable: 0
   debugColor: {r: 0, g: 0.75213003, b: 1, a: 1}
