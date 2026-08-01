@@ -19,6 +19,13 @@ public class PirateStackManager : MonoBehaviour
 
     private void Update()
     {
+        if (Mouse.current != null && Mouse.current.middleButton.isPressed)
+        {
+            return;
+        }
+
+        UpdateCursorState();
+
         if (isBusy) return;
 
         if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
@@ -33,6 +40,87 @@ public class PirateStackManager : MonoBehaviour
         {
             MaintainStackPositions();
         }
+    }
+    private void UpdateCursorState()
+    {
+        if (CursorManager.Instance == null || Mouse.current == null) return;
+
+        Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
+
+        if (Physics.Raycast(ray, out RaycastHit hit, 100f))
+        {
+            GameObject hitObject = hit.collider.gameObject;
+
+            bool isDroppedPirate = hitObject.CompareTag("DroppedPirate") ||
+                                   (hitObject.transform.parent != null && hitObject.transform.parent.CompareTag("DroppedPirate"));
+
+            if (isDroppedPirate)
+            {
+                CursorManager.Instance.SetCursorType(CursorState.PickupPirate);
+                return;
+            }
+
+            BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
+            if (clickedTile != null)
+            {
+                if (clickedTile.isWaterTile)
+                {
+                    Collider[] collidersInWater = Physics.OverlapSphere(clickedTile.transform.position, 0.4f);
+                    foreach (Collider col in collidersInWater)
+                    {
+                        if (col.CompareTag("DroppedPirate") || (col.transform.parent != null && col.transform.parent.CompareTag("DroppedPirate")))
+                        {
+                            CursorManager.Instance.SetCursorType(CursorState.PickupPirate);
+                            return;
+                        }
+                    }
+                }
+
+                int currentTotalHeight = 1 + GetStackCount();
+                if (clickedTile.maxAllowedHeight > 0 && currentTotalHeight > clickedTile.maxAllowedHeight)
+                {
+                    CursorManager.Instance.SetCursorType(CursorState.InvalidPlacement);
+                    return;
+                }
+
+                Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
+                Vector3Int groundGridPos = clickedTile.gridPosition;
+
+                int distanceX = Mathf.Abs(playerPos.x - groundGridPos.x);
+                int distanceZ = Mathf.Abs(playerPos.z - groundGridPos.z);
+                bool isAdjacent = (distanceX + distanceZ == 1);
+
+                if (isAdjacent && stackedPirates.Count > 0)
+                {
+                    if (clickedTile.isWaterTile)
+                    {
+                        CursorManager.Instance.SetCursorType(CursorState.ValidPlacement);
+                        return;
+                    }
+
+                    if (GridManager.Instance != null)
+                    {
+                        Vector3Int airPosAbove = groundGridPos + Vector3Int.up;
+                        if (GridManager.Instance.GetTileAt(airPosAbove) == null)
+                        {
+                            CursorManager.Instance.SetCursorType(CursorState.ValidPlacement);
+                            return;
+                        }
+                    }
+                }
+
+                if (clickedTile.data != null && clickedTile.data.isWalkable && !clickedTile.isWaterTile)
+                {
+                    CursorManager.Instance.SetCursorType(CursorState.WalkToTile);
+                    return;
+                }
+
+                CursorManager.Instance.SetCursorType(CursorState.InvalidPlacement);
+                return;
+            }
+        }
+
+        CursorManager.Instance.SetCursorType(CursorState.Default);
     }
 
     private void MaintainStackPositions()
@@ -125,7 +213,6 @@ public class PirateStackManager : MonoBehaviour
         }
     }
 
-
     private void TryPickupPirate(GameObject targetPirate)
     {
         PirateIdentity identity = targetPirate.GetComponent<PirateIdentity>();
@@ -167,7 +254,7 @@ public class PirateStackManager : MonoBehaviour
             {
                 if (waterTile.data != null)
                 {
-                    waterTile.data.isWalkable = false; 
+                    waterTile.data.isWalkable = false;
                 }
             }
         }
@@ -216,7 +303,6 @@ public class PirateStackManager : MonoBehaviour
 
         isBusy = false;
     }
-
 
     #region --- SOLTAR PIRATA ---
 
