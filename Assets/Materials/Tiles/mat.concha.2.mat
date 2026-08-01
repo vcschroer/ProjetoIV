@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: mat.concha.2
-  m_Shader: {fileID: -6465566751694194690, guid: 699eca97749b1fe4bb573dc01515b043, type: 3}
+  m_Shader: {fileID: -6465566751694194690, guid: 344ab654b0901c548b23d95bd8dd49e8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -108,7 +108,9 @@ Material:
     - _QueueControl: 0
     - _QueueOffset: 0
     - _ReceiveShadows: 1
+    - _ShadowOffset: 0
     - _ShadowSoftness: 0
+    - _ShadowSteps: 3
     - _ShadowThreshold: 0
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0

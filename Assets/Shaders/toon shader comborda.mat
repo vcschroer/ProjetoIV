@@ -1,5 +1,18 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-3760478192035741399
+MonoBehaviour:
+  m_ObjectHideFlags: 11
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
+  version: 10
 --- !u!21 &2100000
 Material:
   serializedVersion: 8
@@ -7,8 +20,8 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: shader toons
-  m_Shader: {fileID: -6465566751694194690, guid: 699eca97749b1fe4bb573dc01515b043, type: 3}
+  m_Name: toon shader comborda
+  m_Shader: {fileID: -6465566751694194690, guid: 344ab654b0901c548b23d95bd8dd49e8, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []
@@ -38,24 +51,14 @@ Material:
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
+    - _OutlineThickness: 0.5
     - _QueueControl: 0
     - _QueueOffset: 0
-    - _ShadowSoftness: 0
-    - _ShadowThreshold: 0
+    - _ShadowOffset: 0
+    - _ShadowSteps: 3
     m_Colors:
-    - _ShadowTint: {r: 0.34999105, g: 0.36377418, b: 0.51886785, a: 1}
+    - _BaseColor: {r: 0.9960785, g: 0.8313726, b: 0.53333336, a: 1}
+    - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}
+    - _ShadowTint: {r: 0.21982911, g: 0.262577, b: 0.49056602, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
---- !u!114 &3725873791567383585
-MonoBehaviour:
-  m_ObjectHideFlags: 11
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0353a89b1f911e48b9e16bdc9f2e058, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Editor::UnityEditor.Rendering.Universal.AssetVersion
-  version: 10

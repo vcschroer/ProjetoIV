@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 4898663297994666174}
   - component: {fileID: 8530308309857662400}
   - component: {fileID: 5054846002286694674}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -215,6 +215,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: pirata captain 3d
       objectReference: {fileID: 0}
+    - target: {fileID: 919132149155446097, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
+      propertyPath: m_Layer
+      value: 7
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
@@ -254,6 +258,9 @@ MonoBehaviour:
   dropDuration: 0.25
   pickupStretchAmount: 0.4
   pickupDuration: 0.25
+  floatAmplitude: 0.08
+  floatSpeed: 2
+  tiltAngle: 5
 --- !u!65 &2774169416651684917
 BoxCollider:
   m_ObjectHideFlags: 0
