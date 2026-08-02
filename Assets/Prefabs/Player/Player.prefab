@@ -132,6 +132,7 @@ MonoBehaviour:
   tileLayer:
     serializedVersion: 2
     m_Bits: 64
+  dustParticles: {fileID: 0}
 --- !u!114 &5054846002286694674
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -161,15 +162,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalScale.x
-      value: 0.4
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalScale.y
-      value: 0.4
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalScale.z
-      value: 0.4
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalPosition.x

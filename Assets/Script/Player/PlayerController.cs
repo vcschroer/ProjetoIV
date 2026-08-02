@@ -10,6 +10,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float jumpHeight = 0.4f;
     [SerializeField] private LayerMask tileLayer;
 
+    [Header("Efeitos Visuais / Partículas")]
+    [Tooltip("Arraste o Particle System da poeira do pé do personagem aqui.")]
+    [SerializeField] private ParticleSystem dustParticles;
+
     private bool isMoving = false;
 
     private void Update()
@@ -85,6 +89,8 @@ public class PlayerController : MonoBehaviour
                 transform.rotation = Quaternion.LookRotation(moveDirection);
             }
 
+            PlayDustParticles();
+
             if (stackManager != null)
             {
                 stackManager.OnPlayerStep();
@@ -108,13 +114,15 @@ public class PlayerController : MonoBehaviour
 
             transform.position = targetWorldPos;
 
+            PlayDustParticles();
+
             if (groundTile != null && groundTile.isQuicksand)
             {
                 if (stackManager != null && stackManager.GetStackCount() > 0)
                 {
                     Debug.Log("O peso da pilha fez a torre afundar na areia movediça!");
                     StartCoroutine(SinkInQuicksandRoutine());
-                    yield break; 
+                    yield break;
                 }
             }
 
@@ -126,7 +134,6 @@ public class PlayerController : MonoBehaviour
 
         isMoving = false;
     }
-
 
     private IEnumerator SinkInQuicksandRoutine()
     {
@@ -140,6 +147,8 @@ public class PlayerController : MonoBehaviour
 
         float sinkDuration = 1.2f;
         float elapsed = 0f;
+
+        PlayDustParticles();
 
         while (elapsed < sinkDuration)
         {
@@ -156,5 +165,16 @@ public class PlayerController : MonoBehaviour
 
         transform.position = sinkTargetPos;
         Debug.Log("Piratas presos na areia movediça. Reinicie o nível!");
+    }
+
+    /// <summary>
+    /// Dispara o sistema de partículas de poeira se ele estiver atribuído no Inspector.
+    /// </summary>
+    private void PlayDustParticles()
+    {
+        if (dustParticles != null)
+        {
+            dustParticles.Play();
+        }
     }
 }
