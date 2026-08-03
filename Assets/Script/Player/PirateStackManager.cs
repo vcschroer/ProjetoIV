@@ -6,7 +6,6 @@ using UnityEngine.InputSystem;
 public class PirateStackManager : MonoBehaviour
 {
     [Header("Configurações da Pilha")]
-    [Tooltip("Piratas que estão acima do líder (do meio para o topo).")]
     [SerializeField] private List<GameObject> stackedPirates = new List<GameObject>();
     [SerializeField] private float stepHeight = 1.0f;
     [SerializeField] private float jumpDuration = 0.25f;
@@ -16,11 +15,13 @@ public class PirateStackManager : MonoBehaviour
     [SerializeField] private string tileLayerName = "Tile";
 
     private bool isBusy = false;
+    private BlockTile currentHoveredTile; 
 
     private void Update()
     {
         if (Mouse.current != null && Mouse.current.middleButton.isPressed)
         {
+            ClearTileHighlight();
             return;
         }
 
@@ -41,6 +42,7 @@ public class PirateStackManager : MonoBehaviour
             MaintainStackPositions();
         }
     }
+
     private void UpdateCursorState()
     {
         if (CursorManager.Instance == null || Mouse.current == null) return;
@@ -51,6 +53,9 @@ public class PirateStackManager : MonoBehaviour
         {
             GameObject hitObject = hit.collider.gameObject;
 
+            BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
+            UpdateTileHighlight(clickedTile);
+
             bool isDroppedPirate = hitObject.CompareTag("DroppedPirate") ||
                                    (hitObject.transform.parent != null && hitObject.transform.parent.CompareTag("DroppedPirate"));
 
@@ -60,7 +65,6 @@ public class PirateStackManager : MonoBehaviour
                 return;
             }
 
-            BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
             if (clickedTile != null)
             {
                 if (clickedTile.isWaterTile)
@@ -119,8 +123,39 @@ public class PirateStackManager : MonoBehaviour
                 return;
             }
         }
+        else
+        {
+            ClearTileHighlight();
+        }
 
         CursorManager.Instance.SetCursorType(CursorState.Default);
+    }
+
+    private void UpdateTileHighlight(BlockTile newTile)
+    {
+        if (currentHoveredTile != newTile)
+        {
+            if (currentHoveredTile != null)
+            {
+                currentHoveredTile.SetHighlight(false);
+            }
+
+            currentHoveredTile = newTile;
+
+            if (currentHoveredTile != null)
+            {
+                currentHoveredTile.SetHighlight(true);
+            }
+        }
+    }
+
+    private void ClearTileHighlight()
+    {
+        if (currentHoveredTile != null)
+        {
+            currentHoveredTile.SetHighlight(false);
+            currentHoveredTile = null;
+        }
     }
 
     private void MaintainStackPositions()
@@ -138,6 +173,13 @@ public class PirateStackManager : MonoBehaviour
 
     public void OnPlayerStep()
     {
+        PirateJuice baseJuice = GetComponentInChildren<PirateJuice>();
+        if (baseJuice != null)
+        {
+            baseJuice.TriggerBounce(0f);
+            baseJuice.TriggerStepSway(delay: 0f, heightMultiplier: 0.7f);
+        }
+
         for (int i = 0; i < stackedPirates.Count; i++)
         {
             if (stackedPirates[i] != null)
@@ -145,8 +187,11 @@ public class PirateStackManager : MonoBehaviour
                 PirateJuice juice = stackedPirates[i].GetComponentInChildren<PirateJuice>();
                 if (juice != null)
                 {
-                    float delay = (i + 1) * 0.04f;
+                    float delay = (i + 1) * 0.035f;
+                    float heightMultiplier = 1f + (i * 0.45f);
+
                     juice.TriggerBounce(delay);
+                    juice.TriggerStepSway(delay, heightMultiplier);
                 }
             }
         }
@@ -219,11 +264,6 @@ public class PirateStackManager : MonoBehaviour
         if (identity != null)
         {
             int expectedID = stackedPirates.Count + 1;
-            if (identity.pirateID != expectedID)
-            {
-                Debug.Log($"[Totem] Ordem incorreta! Pegue o Pirata {expectedID} primeiro.");
-                return;
-            }
         }
 
         Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
@@ -235,10 +275,6 @@ public class PirateStackManager : MonoBehaviour
         if (distanceX + distanceZ == 1)
         {
             StartCoroutine(PickupRoutine(targetPirate));
-        }
-        else
-        {
-            Debug.Log("[Totem] Chegue mais perto para pegar o pirata!");
         }
     }
 
@@ -304,8 +340,6 @@ public class PirateStackManager : MonoBehaviour
         isBusy = false;
     }
 
-    #region --- SOLTAR PIRATA ---
-
     private void TryDropPirate(BlockTile targetTile)
     {
         if (stackedPirates.Count == 0) return;
@@ -315,12 +349,6 @@ public class PirateStackManager : MonoBehaviour
 
         int distanceX = Mathf.Abs(playerPos.x - groundGridPos.x);
         int distanceZ = Mathf.Abs(playerPos.z - groundGridPos.z);
-
-        if (distanceX + distanceZ != 1)
-        {
-            Debug.Log("[Totem] Você precisa estar ao lado do bloco para soltar o pirata!");
-            return;
-        }
 
         if (targetTile.isWaterTile)
         {
@@ -335,11 +363,6 @@ public class PirateStackManager : MonoBehaviour
             if (GridManager.Instance != null)
             {
                 Vector3Int airPosAbove = groundGridPos + Vector3Int.up;
-                if (GridManager.Instance.GetTileAt(airPosAbove) != null)
-                {
-                    Debug.LogWarning("[Totem] Posição acima já está ocupada por um bloco!");
-                    return;
-                }
             }
 
             int topIndex = stackedPirates.Count - 1;
@@ -428,8 +451,6 @@ public class PirateStackManager : MonoBehaviour
 
         isBusy = false;
     }
-
-    #endregion
 
     public int GetStackCount()
     {

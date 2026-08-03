@@ -12,11 +12,11 @@ public class CursorManager : MonoBehaviour
     }
 
     [Header("Cursores do Jogo")]
-    public CursorData defaultCursor;          
-    public CursorData validPlacementCursor;   
-    public CursorData pickupPirateCursor;     
-    public CursorData invalidPlacementCursor; 
-    public CursorData orbitCameraCursor;   
+    public CursorData defaultCursor;
+    public CursorData validPlacementCursor;
+    public CursorData pickupPirateCursor;
+    public CursorData invalidPlacementCursor;
+    public CursorData orbitCameraCursor;
     private Texture2D currentTexture;
 
     private void Awake()

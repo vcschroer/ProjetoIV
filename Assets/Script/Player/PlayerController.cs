@@ -11,7 +11,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask tileLayer;
 
     [Header("Efeitos Visuais / Partículas")]
-    [Tooltip("Arraste o Particle System da poeira do pé do personagem aqui.")]
     [SerializeField] private ParticleSystem dustParticles;
 
     private bool isMoving = false;
@@ -48,10 +47,7 @@ public class PlayerController : MonoBehaviour
                     StopAllCoroutines();
                     StartCoroutine(MoveAlongPath(path));
                 }
-                else
-                {
-                    Debug.LogWarning($"[PlayerController] Caminho inválido até a posição {targetPos}!");
-                }
+
             }
         }
     }
@@ -72,7 +68,6 @@ public class PlayerController : MonoBehaviour
 
                 if (currentHeight > groundTile.maxAllowedHeight)
                 {
-                    Debug.LogWarning($"[PlayerController] Altura excessiva! O pirata tem altura {currentHeight}, mas o tile só permite {groundTile.maxAllowedHeight}. Movimento interrompido!");
                     isMoving = false;
                     yield break;
                 }
@@ -120,7 +115,6 @@ public class PlayerController : MonoBehaviour
             {
                 if (stackManager != null && stackManager.GetStackCount() > 0)
                 {
-                    Debug.Log("O peso da pilha fez a torre afundar na areia movediça!");
                     StartCoroutine(SinkInQuicksandRoutine());
                     yield break;
                 }
@@ -164,12 +158,8 @@ public class PlayerController : MonoBehaviour
         }
 
         transform.position = sinkTargetPos;
-        Debug.Log("Piratas presos na areia movediça. Reinicie o nível!");
     }
 
-    /// <summary>
-    /// Dispara o sistema de partículas de poeira se ele estiver atribuído no Inspector.
-    /// </summary>
     private void PlayDustParticles()
     {
         if (dustParticles != null)

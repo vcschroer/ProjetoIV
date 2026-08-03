@@ -10,14 +10,20 @@ public class BlockTile : MonoBehaviour
 
     [Header("Obstáculos / Altura")]
     public int maxAllowedHeight = 0;
-    [Tooltip("Marque se este tile for um bloco de água.")]
     public bool isWaterTile = false;
-    [Tooltip("Marque se este tile for Areia Movediça.")]
     public bool isQuicksand = false;
+
+    [Header("Marcação Visual")]
+    [SerializeField] private GameObject outlineObject;
 
     private void Awake()
     {
         meshRenderer = GetComponent<MeshRenderer>();
+
+        if (outlineObject != null)
+        {
+            outlineObject.SetActive(false);
+        }
     }
 
     private void Start()
@@ -38,6 +44,14 @@ public class BlockTile : MonoBehaviour
         if (data != null && meshRenderer != null)
         {
             meshRenderer.material.color = data.debugColor;
+        }
+    }
+
+    public void SetHighlight(bool state)
+    {
+        if (outlineObject != null)
+        {
+            outlineObject.SetActive(state);
         }
     }
 }
