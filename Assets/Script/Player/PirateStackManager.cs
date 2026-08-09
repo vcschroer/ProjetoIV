@@ -15,7 +15,7 @@ public class PirateStackManager : MonoBehaviour
     [SerializeField] private string tileLayerName = "Tile";
 
     private bool isBusy = false;
-    private BlockTile currentHoveredTile; 
+    private BlockTile currentHoveredTile;
 
     private void Update()
     {
@@ -53,17 +53,19 @@ public class PirateStackManager : MonoBehaviour
         {
             GameObject hitObject = hit.collider.gameObject;
 
-            BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
-            UpdateTileHighlight(clickedTile);
-
             bool isDroppedPirate = hitObject.CompareTag("DroppedPirate") ||
                                    (hitObject.transform.parent != null && hitObject.transform.parent.CompareTag("DroppedPirate"));
 
             if (isDroppedPirate)
             {
+                BlockTile pirateTile = hitObject.GetComponentInParent<BlockTile>();
+                UpdateTileHighlight(pirateTile);
                 CursorManager.Instance.SetCursorType(CursorState.PickupPirate);
                 return;
             }
+
+            BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
+            UpdateTileHighlight(clickedTile);
 
             if (clickedTile != null)
             {
@@ -261,9 +263,16 @@ public class PirateStackManager : MonoBehaviour
     private void TryPickupPirate(GameObject targetPirate)
     {
         PirateIdentity identity = targetPirate.GetComponent<PirateIdentity>();
+
         if (identity != null)
         {
             int expectedID = stackedPirates.Count + 1;
+
+            if (identity.pirateID != expectedID)
+            {
+                Debug.Log($"[Recusado] Tentou pegar o pirata {identity.pirateID}, mas o necessário é o {expectedID}.");
+                return;
+            }
         }
 
         Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
@@ -305,7 +314,14 @@ public class PirateStackManager : MonoBehaviour
         BlockTile tileScript = pirate.GetComponent<BlockTile>();
         if (tileScript != null)
         {
+            tileScript.SetHighlight(false);
             tileScript.enabled = false;
+        }
+
+        Collider col = pirate.GetComponent<Collider>();
+        if (col != null)
+        {
+            col.enabled = false;
         }
 
         pirate.tag = "Untagged";
@@ -360,11 +376,6 @@ public class PirateStackManager : MonoBehaviour
         }
         else
         {
-            if (GridManager.Instance != null)
-            {
-                Vector3Int airPosAbove = groundGridPos + Vector3Int.up;
-            }
-
             int topIndex = stackedPirates.Count - 1;
             GameObject pirateToDrop = stackedPirates[topIndex];
             stackedPirates.RemoveAt(topIndex);
@@ -400,7 +411,6 @@ public class PirateStackManager : MonoBehaviour
         pirate.transform.rotation = Quaternion.identity;
 
         PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();
-
         pirate.tag = "DroppedPirate";
 
         int tileLayerIndex = LayerMask.NameToLayer(tileLayerName);
@@ -409,11 +419,9 @@ public class PirateStackManager : MonoBehaviour
             SetLayerRecursively(pirate, tileLayerIndex);
         }
 
-        BoxCollider col = pirate.GetComponent<BoxCollider>();
+        Collider col = pirate.GetComponent<Collider>();
         if (col == null) col = pirate.AddComponent<BoxCollider>();
         col.enabled = true;
-        col.size = Vector3.one;
-        col.center = Vector3.zero;
 
         if (isWater)
         {
@@ -437,11 +445,12 @@ public class PirateStackManager : MonoBehaviour
             }
 
             BlockTile tile = pirate.GetComponent<BlockTile>();
-            if (tile == null) tile = pirate.AddComponent<BlockTile>();
-            tile.enabled = true;
-
-            if (tile.data == null) tile.data = defaultWalkableData;
-            tile.Setup(finalGridPos, tile.data);
+            if (tile != null)
+            {
+                tile.enabled = true;
+                if (tile.data == null) tile.data = defaultWalkableData;
+                tile.Setup(finalGridPos, tile.data);
+            }
         }
 
         if (GridManager.Instance != null)

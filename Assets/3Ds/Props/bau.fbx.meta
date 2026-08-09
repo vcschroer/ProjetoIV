@@ -8,17 +8,17 @@ ModelImporter:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: mat.dourado
-    second: {fileID: 2100000, guid: a747587cfc4c10d4abd364bd29a87fbc, type: 2}
+    second: {fileID: 2100000, guid: 192e4cb52c489cb489dd93d9e3dac614, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: mat.madeira
-    second: {fileID: 2100000, guid: 739a7b431ac170d41af45100352b0cbb, type: 2}
+    second: {fileID: 2100000, guid: 82684d93d35332d489b42f6f64a1abe0, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: mat.preto
-    second: {fileID: 2100000, guid: 04f124b34c70c3c499fa0faf6be3563c, type: 2}
+    second: {fileID: 2100000, guid: 9578a765580514646aed0247e1e96424, type: 2}
   materials:
     materialImportMode: 2
     materialName: 0

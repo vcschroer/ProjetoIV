@@ -44,10 +44,24 @@ public class PlayerController : MonoBehaviour
 
                 if (path != null && path.Count > 0)
                 {
-                    StopAllCoroutines();
-                    StartCoroutine(MoveAlongPath(path));
-                }
+                    // VERIFICAÇÃO: Checa se todo o caminho tem chão embaixo antes de mover
+                    bool isPathValid = true;
+                    foreach (Vector3Int step in path)
+                    {
+                        Vector3Int groundCheckPos = new Vector3Int(step.x, step.y - 1, step.z);
+                        if (GridManager.Instance.GetTileAt(groundCheckPos) == null)
+                        {
+                            isPathValid = false;
+                            break; // Encontrou um buraco, caminho inválido
+                        }
+                    }
 
+                    if (isPathValid)
+                    {
+                        StopAllCoroutines();
+                        StartCoroutine(MoveAlongPath(path));
+                    }
+                }
             }
         }
     }
@@ -62,7 +76,14 @@ public class PlayerController : MonoBehaviour
             Vector3Int groundPos = new Vector3Int(step.x, step.y - 1, step.z);
             BlockTile groundTile = GridManager.Instance != null ? GridManager.Instance.GetTileAt(groundPos) : null;
 
-            if (groundTile != null && groundTile.maxAllowedHeight > 0)
+            // FAIL-SAFE: Se o tile de baixo for nulo na hora de dar o passo, cancela o movimento
+            if (groundTile == null)
+            {
+                isMoving = false;
+                yield break;
+            }
+
+            if (groundTile.maxAllowedHeight > 0)
             {
                 int currentHeight = 1 + (stackManager != null ? stackManager.GetStackCount() : 0);
 
@@ -111,7 +132,7 @@ public class PlayerController : MonoBehaviour
 
             PlayDustParticles();
 
-            if (groundTile != null && groundTile.isQuicksand)
+            if (groundTile.isQuicksand)
             {
                 if (stackManager != null && stackManager.GetStackCount() > 0)
                 {
@@ -158,6 +179,7 @@ public class PlayerController : MonoBehaviour
         }
 
         transform.position = sinkTargetPos;
+        isMoving = false; // Garante que a flag seja desligada ao final da animação.
     }
 
     private void PlayDustParticles()
