@@ -44,7 +44,6 @@ public class PlayerController : MonoBehaviour
 
                 if (path != null && path.Count > 0)
                 {
-                    // VERIFICAÇÃO: Checa se todo o caminho tem chão embaixo antes de mover
                     bool isPathValid = true;
                     foreach (Vector3Int step in path)
                     {
@@ -52,7 +51,7 @@ public class PlayerController : MonoBehaviour
                         if (GridManager.Instance.GetTileAt(groundCheckPos) == null)
                         {
                             isPathValid = false;
-                            break; // Encontrou um buraco, caminho inválido
+                            break; 
                         }
                     }
 
@@ -76,7 +75,6 @@ public class PlayerController : MonoBehaviour
             Vector3Int groundPos = new Vector3Int(step.x, step.y - 1, step.z);
             BlockTile groundTile = GridManager.Instance != null ? GridManager.Instance.GetTileAt(groundPos) : null;
 
-            // FAIL-SAFE: Se o tile de baixo for nulo na hora de dar o passo, cancela o movimento
             if (groundTile == null)
             {
                 isMoving = false;
@@ -179,7 +177,7 @@ public class PlayerController : MonoBehaviour
         }
 
         transform.position = sinkTargetPos;
-        isMoving = false; // Garante que a flag seja desligada ao final da animação.
+        isMoving = false;
     }
 
     private void PlayDustParticles()

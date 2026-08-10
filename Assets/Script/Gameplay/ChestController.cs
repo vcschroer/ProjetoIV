@@ -1,49 +1,85 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 public class ChestController : MonoBehaviour
 {
-    [Header("Configurações do Pulo e Giro (Juice Inicial)")]
-    [SerializeField] private float jumpHeight = 1.5f;       // Altura do pulo
-    [SerializeField] private float jumpDuration = 0.8f;     // Tempo total do pulo
-    [SerializeField] private float totalSpins = 2f;         // Quantas voltas ele dá no ar
-    [SerializeField] private float stretchAmount = 0.25f;   // O quanto ele acha e estica
+    [Header("Eixos e Direções de Rotação")]
+    [SerializeField] private Vector3 idleSpinAxis = new Vector3(0, 1, 0);
+    [SerializeField] private Vector3 openSpinAxis = new Vector3(0, 1, 0);
+    [SerializeField] private Vector3 postSpinAxis = new Vector3(0, 1, 0);
+
+    [Header("Configurações do Flutuar Idle (Antes de Abrir)")]
+    [SerializeField] private float idleFloatSpeed = 1.5f;
+    [SerializeField] private float idleFloatAmplitude = 0.08f;
+    [SerializeField] private float idleSpinSpeed = 0f;
+
+    [Header("Configurações do Pulo e Giro")]
+    [SerializeField] private float jumpHeight = 1.5f;
+    [SerializeField] private float jumpDuration = 0.8f;
+    [SerializeField] private float totalSpins = 2f;
+    [SerializeField] private float stretchAmount = 0.25f;
 
     [Header("Configurações de Tamanho")]
-    [SerializeField] private Vector3 finalScale = Vector3.one; // O tamanho que o baú vai ficar permanentemente após abrir
+    [SerializeField] private Vector3 finalScale = Vector3.one;
 
-    [Header("Comportamento Pós-Abertura (Flutuar e Girar)")]
-    [SerializeField] private float floatSpeed = 2f;         // Velocidade da flutuação contínua
-    [SerializeField] private float floatAmplitude = 0.15f;  // Altura da flutuação (o quanto sobe e desce flutuando)
-    [SerializeField] private float postSpinSpeed = 45f;     // Velocidade do giro contínuo depois de aberto
+    [Header("Comportamento Pós-Abertura")]
+    [SerializeField] private float floatSpeed = 2f;
+    [SerializeField] private float floatAmplitude = 0.15f;
+    [SerializeField] private float postSpinSpeed = 45f;
 
-    [Header("Efeitos e Interação")]
-    [SerializeField] private ParticleSystem sparkleParticles; // Referência ao sistema de partículas de brilho
+    [Header("Partículas")]
+    [SerializeField] private List<GameObject> particlePrefabs = new List<GameObject>();
+    [SerializeField] private int randomParticleCount = 20;
+
+    [Header("Área de Spawn das Partículas")]
+    [SerializeField] private float minSpawnDistance = 0.5f;
+    [SerializeField] private float maxSpawnDistance = 1.8f;
+    [SerializeField] private float minSpawnHeight = 0.0f;
+    [SerializeField] private float maxSpawnHeight = 2.0f;
+
+    [SerializeField] private ParticleSystem sparkleParticles;
+
+    [Header("Interação")]
     [SerializeField] private float maxInteractionDistance = 2.5f;
     [SerializeField] private Transform playerTransform;
 
+    [Header("Fim de Fase / Transição")]
+    [SerializeField] private string nomeCenaDestino = "Menu"; 
+    [SerializeField] private float delayAntesTransicao = 0.2f;
+
     private bool isOpen = false;
     private bool isAnimating = false;
+    private Vector3 startPosition;
+    private Quaternion startRotation;
+    private Vector3 startScale;
     private Vector3 basePosition;
-    private Quaternion baseRotation;
+
+    private void Awake()
+    {
+        startPosition = transform.position;
+        startRotation = transform.rotation;
+        startScale = transform.localScale;
+    }
 
     private void Update()
     {
-        if (isOpen)
+        if (!isOpen && !isAnimating)
         {
-            // Comportamento contínuo após abrir: Fica flutuando para cima e para baixo
+            float idleY = startPosition.y + Mathf.Sin(Time.time * idleFloatSpeed) * idleFloatAmplitude;
+            transform.position = new Vector3(startPosition.x, idleY, startPosition.z);
+            if (idleSpinSpeed != 0) transform.Rotate(idleSpinAxis.normalized * idleSpinSpeed * Time.deltaTime, Space.Self);
+        }
+        else if (isOpen && !isAnimating)
+        {
             float newY = basePosition.y + Mathf.Sin(Time.time * floatSpeed) * floatAmplitude;
             transform.position = new Vector3(basePosition.x, newY, basePosition.z);
-
-            // Fica girando devagar no próprio eixo
-            transform.Rotate(Vector3.up * postSpinSpeed * Time.deltaTime, Space.World);
-            return;
+            transform.Rotate(postSpinAxis.normalized * postSpinSpeed * Time.deltaTime, Space.Self);
         }
 
-        if (isAnimating) return;
+        if (isAnimating || isOpen) return; 
 
-        // Detecta clique do botão esquerdo OU direito do mouse
         if (Mouse.current != null &&
             (Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame))
         {
@@ -57,7 +93,6 @@ public class ChestController : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, 100f))
         {
-            // Verifica se clicou no baú ou em seus filhos
             if (hit.collider.gameObject == gameObject || hit.collider.transform.IsChildOf(transform))
             {
                 if (playerTransform != null)
@@ -65,7 +100,6 @@ public class ChestController : MonoBehaviour
                     float distance = Vector3.Distance(transform.position, playerTransform.position);
                     if (distance > maxInteractionDistance) return;
                 }
-
                 StartCoroutine(ChestJuiceRoutine());
             }
         }
@@ -74,49 +108,58 @@ public class ChestController : MonoBehaviour
     private IEnumerator ChestJuiceRoutine()
     {
         isAnimating = true;
-        basePosition = transform.position;
-        baseRotation = transform.rotation;
+        isOpen = false;
 
-        // Dispara as partículas de brilho
-        if (sparkleParticles != null)
-        {
-            sparkleParticles.Play();
-        }
+        transform.position = startPosition;
+        transform.rotation = startRotation;
+        transform.localScale = startScale;
+        basePosition = startPosition;
+
+        if (sparkleParticles != null) sparkleParticles.Play();
+        SpawnRandomParticles();
 
         float time = 0;
-        Vector3 initialScale = transform.localScale;
-
         while (time < jumpDuration)
         {
             time += Time.deltaTime;
             float progress = time / jumpDuration;
-
-            // 1. Movimento de Pulo Parabólico
             float heightOffset = Mathf.Sin(progress * Mathf.PI) * jumpHeight;
             transform.position = basePosition + new Vector3(0, heightOffset, 0);
-
-            // 2. Rotação no ar baseada na quantidade de voltas configurada
-            float currentYRotation = progress * 360f * totalSpins;
-            transform.rotation = baseRotation * Quaternion.Euler(0, currentYRotation, 0);
-
-            // 3. Efeito de Escala (Achatar/Esticar + Transição gradual para o tamanho final desejado)
+            float currentAngle = progress * 360f * totalSpins;
+            transform.rotation = startRotation * Quaternion.AngleAxis(currentAngle, openSpinAxis.normalized);
             float scaleEffect = 1f + Mathf.Sin(progress * Mathf.PI) * stretchAmount;
-            Vector3 targetScaleProgress = Vector3.Lerp(initialScale, finalScale, progress);
+            Vector3 targetScaleProgress = Vector3.Lerp(startScale, finalScale, progress);
             transform.localScale = targetScaleProgress * scaleEffect;
-
             yield return null;
         }
 
-        // Reseta rotação e define o tamanho final cravado
-        transform.rotation = baseRotation;
+        transform.rotation = startRotation;
         transform.localScale = finalScale;
-
-        // Atualiza a posição base para o ponto onde ele terminou para a flutuação começar perfeitamente
         basePosition = transform.position;
-
         isAnimating = false;
-        isOpen = true; // Ativa o estado flutuante e giratório contínuo
+        isOpen = true; 
 
-        Debug.Log("Baú aberto! Fase concluída com sucesso!");
+        yield return new WaitForSeconds(delayAntesTransicao);
+        if (TransitionManager.Instance != null)
+        {
+            TransitionManager.Instance.CarregarCena(nomeCenaDestino);
+        }
+    }
+
+    private void SpawnRandomParticles()
+    {
+        if (particlePrefabs == null || particlePrefabs.Count == 0) return;
+        for (int i = 0; i < randomParticleCount; i++)
+        {
+            GameObject selectedPrefab = particlePrefabs[Random.Range(0, particlePrefabs.Count)];
+            if (selectedPrefab == null) continue;
+            Vector2 randomCircle = Random.insideUnitCircle.normalized;
+            float randomDistance = Random.Range(minSpawnDistance, maxSpawnDistance);
+            float randomHeight = Random.Range(minSpawnHeight, maxSpawnHeight);
+            Vector3 spawnOffset = new Vector3(randomCircle.x * randomDistance, randomHeight, randomCircle.y * randomDistance);
+            Vector3 spawnPos = transform.position + spawnOffset;
+            GameObject particle = Instantiate(selectedPrefab, spawnPos, Quaternion.identity);
+            Destroy(particle, 2.5f);
+        }
     }
 }

@@ -96,6 +96,7 @@ Material:
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
     - _DstBlendAlpha: 0
+    - _Enable_Quicksand: 0
     - _EnvironmentReflections: 1
     - _GlossMapScale: 1
     - _Glossiness: 0.5
@@ -117,11 +118,14 @@ Material:
     - _SrcBlendAlpha: 1
     - _Surface: 0
     - _UVSec: 0
+    - _Wave_Frequency: 2
+    - _Wave_Height: 0.05
+    - _Wave_Speed: 1
     - _WorkflowMode: 1
     - _XRMotionVectorsPass: 1
     - _ZWrite: 1
     m_Colors:
-    - _BaseColor: {r: 0.41960788, g: 0.5490196, b: 0.37254903, a: 1}
+    - _BaseColor: {r: 0.3738773, g: 0.5943396, b: 0.2943663, a: 1}
     - _Color: {r: 0.41960785, g: 0.5490196, b: 0.372549, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 0}
     - _OutlineColor: {r: 0, g: 0, b: 0, a: 1}

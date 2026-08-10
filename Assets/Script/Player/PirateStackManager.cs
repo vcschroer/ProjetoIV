@@ -90,13 +90,15 @@ public class PirateStackManager : MonoBehaviour
                 }
 
                 Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
-                Vector3Int groundGridPos = clickedTile.gridPosition;
+                Vector3Int groundGridPos = Vector3Int.RoundToInt(clickedTile.transform.position);
 
                 int distanceX = Mathf.Abs(playerPos.x - groundGridPos.x);
                 int distanceZ = Mathf.Abs(playerPos.z - groundGridPos.z);
-                bool isAdjacent = (distanceX + distanceZ == 1);
+                int distanceY = Mathf.Abs(playerPos.y - groundGridPos.y);
 
-                if (isAdjacent && stackedPirates.Count > 0)
+                bool isWithinRange = (distanceX <= 1 && distanceZ <= 1) && (distanceX > 0 || distanceZ > 0) && (distanceY <= 2);
+
+                if (isWithinRange && stackedPirates.Count > 0)
                 {
                     if (clickedTile.isWaterTile)
                     {
@@ -270,7 +272,6 @@ public class PirateStackManager : MonoBehaviour
 
             if (identity.pirateID != expectedID)
             {
-                Debug.Log($"[Recusado] Tentou pegar o pirata {identity.pirateID}, mas o necessário é o {expectedID}.");
                 return;
             }
         }
@@ -280,8 +281,9 @@ public class PirateStackManager : MonoBehaviour
 
         int distanceX = Mathf.Abs(playerPos.x - piratePos.x);
         int distanceZ = Mathf.Abs(playerPos.z - piratePos.z);
+        int distanceY = Mathf.Abs(playerPos.y - piratePos.y);
 
-        if (distanceX + distanceZ == 1)
+        if (distanceX <= 1 && distanceZ <= 1 && (distanceX > 0 || distanceZ > 0) && distanceY <= 2)
         {
             StartCoroutine(PickupRoutine(targetPirate));
         }
@@ -361,27 +363,24 @@ public class PirateStackManager : MonoBehaviour
         if (stackedPirates.Count == 0) return;
 
         Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
-        Vector3Int groundGridPos = targetTile.gridPosition;
+        Vector3Int groundGridPos = Vector3Int.RoundToInt(targetTile.transform.position);
 
         int distanceX = Mathf.Abs(playerPos.x - groundGridPos.x);
         int distanceZ = Mathf.Abs(playerPos.z - groundGridPos.z);
+        int distanceY = Mathf.Abs(playerPos.y - groundGridPos.y);
 
-        if (targetTile.isWaterTile)
+        bool isWithinDropRange = (distanceX <= 1 && distanceZ <= 1) && (distanceX > 0 || distanceZ > 0) && (distanceY <= 2);
+
+        if (!isWithinDropRange)
         {
-            int topIndex = stackedPirates.Count - 1;
-            GameObject pirateToDrop = stackedPirates[topIndex];
-            stackedPirates.RemoveAt(topIndex);
-
-            StartCoroutine(DropRoutine(pirateToDrop, groundGridPos, isWater: true));
+            return;
         }
-        else
-        {
-            int topIndex = stackedPirates.Count - 1;
-            GameObject pirateToDrop = stackedPirates[topIndex];
-            stackedPirates.RemoveAt(topIndex);
 
-            StartCoroutine(DropRoutine(pirateToDrop, groundGridPos, isWater: false));
-        }
+        int topIndex = stackedPirates.Count - 1;
+        GameObject pirateToDrop = stackedPirates[topIndex];
+        stackedPirates.RemoveAt(topIndex);
+
+        StartCoroutine(DropRoutine(pirateToDrop, groundGridPos, isWater: targetTile.isWaterTile));
     }
 
     private IEnumerator DropRoutine(GameObject pirate, Vector3Int targetGridPos, bool isWater)

@@ -87,7 +87,7 @@ MonoBehaviour:
     depthCompareFunction: 4
     enableWrite: 1
     stencilSettings:
-      overrideStencilState: 0
+      overrideStencilState: 1
       stencilReference: 0
       stencilCompareFunction: 8
       passOperation: 0
@@ -117,7 +117,7 @@ MonoBehaviour:
     AfterOpaque: 0
     Source: 1
     NormalSamples: 1
-    Intensity: 0.4
+    Intensity: 0.66
     DirectLightingStrength: 0.25
     Radius: 0.3
     Samples: 1
