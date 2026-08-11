@@ -4836,8 +4836,8 @@
     "m_ObjectId": "c2c6cb018b204ad590bae24c0ebdfe1b",
     "m_Title": "Color",
     "m_Position": {
-        "x": -1071.0,
-        "y": 804.0
+        "x": -1071.0001220703125,
+        "y": 803.9999389648438
     }
 }
 
@@ -6333,7 +6333,7 @@
     "m_Title": "Vert Displacement and Normals",
     "m_Position": {
         "x": -1064.0001220703125,
-        "y": -133.0000762939453
+        "y": -133.0
     }
 }
 
