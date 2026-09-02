@@ -53,12 +53,13 @@ public class PirateJuice : MonoBehaviour
     private IEnumerator BounceRoutine(float delay)
     {
         if (delay > 0) yield return new WaitForSeconds(delay);
+        if (bounceDuration <= 0f) yield break;
 
         float elapsed = 0f;
         while (elapsed < bounceDuration)
         {
             elapsed += Time.deltaTime;
-            float progress = elapsed / bounceDuration;
+            float progress = Mathf.Clamp01(elapsed / bounceDuration);
 
             float yOffset = Mathf.Sin(progress * Mathf.PI) * bounceIntensity;
 
@@ -67,6 +68,8 @@ public class PirateJuice : MonoBehaviour
 
             yield return null;
         }
+
+        transform.localPosition = initialLocalPos;
     }
 
     public void TriggerStepSway(float delay = 0f, float heightMultiplier = 1f)
@@ -79,36 +82,47 @@ public class PirateJuice : MonoBehaviour
     {
         if (delay > 0) yield return new WaitForSeconds(delay);
 
+        // Previne divisão por zero se swayDuration for 0 no Inspector
+        if (swayDuration <= 0f)
+        {
+            transform.localRotation = initialRotation;
+            transform.localPosition = initialLocalPos;
+            swayCoroutine = null;
+            yield break;
+        }
+
         float elapsed = 0f;
 
         float maxTilt = tiltAngle * heightMultiplier;
         float maxLift = upLiftIntensity * heightMultiplier;
         float maxShift = backShiftIntensity * heightMultiplier;
 
+        // Garante que a linha de eixo não seja Vector3.zero
+        Vector3 safeAxis = tiltAxis.sqrMagnitude > 0.0001f ? tiltAxis.normalized : Vector3.right;
+
         while (elapsed < swayDuration)
         {
             elapsed += Time.deltaTime;
-            float progress = elapsed / swayDuration;
+            float progress = Mathf.Clamp01(elapsed / swayDuration);
 
             float rawOvershoot = Mathf.Sin(progress * Mathf.PI * 2f);
-
             float damping = Mathf.Pow(1f - progress, 1.2f);
 
             float curve;
             if (rawOvershoot >= 0)
             {
-                curve = rawOvershoot * damping; 
+                curve = rawOvershoot * damping;
             }
             else
             {
                 curve = rawOvershoot * damping * forwardOvershootRatio;
             }
 
-            Quaternion tiltRot = Quaternion.Euler(tiltAxis.normalized * (curve * maxTilt));
+            Quaternion tiltRot = Quaternion.Euler(safeAxis * (curve * maxTilt));
             transform.localRotation = initialRotation * tiltRot;
 
             float yLift = Mathf.Abs(curve) * maxLift;
-            float zShift = -curve * maxShift; 
+            float zShift = -curve * maxShift;
 
             Vector3 offset = new Vector3(0f, yLift, zShift);
             transform.localPosition = initialLocalPos + offset;
@@ -132,7 +146,6 @@ public class PirateJuice : MonoBehaviour
         transform.localRotation = initialRotation;
     }
 
-
     public void TriggerDropSquash(float delay = 0f)
     {
         StopSway();
@@ -142,13 +155,14 @@ public class PirateJuice : MonoBehaviour
     private IEnumerator DropSquashRoutine(float delay)
     {
         if (delay > 0) yield return new WaitForSeconds(delay);
+        if (dropDuration <= 0f) yield break;
 
         float elapsed = 0f;
 
         while (elapsed < dropDuration)
         {
             elapsed += Time.deltaTime;
-            float progress = elapsed / dropDuration;
+            float progress = Mathf.Clamp01(elapsed / dropDuration);
 
             float squashFactor = Mathf.Sin(progress * Mathf.PI) * dropSquashAmount;
 
@@ -172,12 +186,14 @@ public class PirateJuice : MonoBehaviour
 
     private IEnumerator PickupStretchRoutine()
     {
+        if (pickupDuration <= 0f) yield break;
+
         float elapsed = 0f;
 
         while (elapsed < pickupDuration)
         {
             elapsed += Time.deltaTime;
-            float progress = elapsed / pickupDuration;
+            float progress = Mathf.Clamp01(elapsed / pickupDuration);
 
             float stretchFactor = Mathf.Sin(progress * Mathf.PI) * pickupStretchAmount;
 
@@ -227,5 +243,4 @@ public class PirateJuice : MonoBehaviour
             yield return null;
         }
     }
-
 }

@@ -14502,6 +14502,7 @@ MonoBehaviour:
   minDistance: 30
   maxDistance: 100
   zoomSensitivity: 250
+  zoomSmoothSpeed: 5
   rotationSensitivityX: 0.2
   rotationSensitivityY: 0.2
   minPitch: 5
@@ -15314,7 +15315,7 @@ Transform:
   m_GameObject: {fileID: 353887903}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.88, y: 4.23, z: -4.44}
+  m_LocalPosition: {x: -1.88, y: 4.72, z: -4.44}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -31408,7 +31409,7 @@ PrefabInstance:
       objectReference: {fileID: 11400000, guid: c83a0ed3266f04447acde76464f21756, type: 2}
     - target: {fileID: 5054846002286694674, guid: 71038ae0dcac4f24e9ea132e23dae547, type: 3}
       propertyPath: stackedPirates.Array.size
-      value: 2
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5054846002286694674, guid: 71038ae0dcac4f24e9ea132e23dae547, type: 3}
       propertyPath: 'stackedPirates.Array.data[0]'
@@ -42338,7 +42339,7 @@ Transform:
   m_GameObject: {fileID: 1045442143}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -2.43, y: 4.23, z: -2.11}
+  m_LocalPosition: {x: -2.43, y: 4.72, z: -2.11}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -44755,6 +44756,7 @@ MonoBehaviour:
   expandedScale: {x: 4, y: 4, z: 1}
   animationDuration: 0.25
   centerWhenExpanded: 1
+  startHidden: 1
   clickThreshold: 1
   usarWobble: 1
   velocidadeWobble: 1.5
@@ -57624,11 +57626,16 @@ MonoBehaviour:
   landingTile: {fileID: 1635411801}
   startTile: {fileID: 2128219072}
   yOffsetAboveTile: 1
+  startDelay: 0.5
   jumpFromShipDuration: 0.55
   jumpFromShipArcHeight: 1.4
   delayBetweenJumps: 0.15
   walkSpeed: 4
   stepJumpHeight: 0.4
+  cutsceneZoomDistance: 45
+  normalZoomDistance: 60
+  mapDisplayDelay: 0.2
+  autoMinimizeDelay: 1.5
 --- !u!4 &1410675642 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6683997371804544947, guid: 850a2b81b92317f4c9f5db743a85e775, type: 3}
@@ -83397,7 +83404,7 @@ Transform:
   m_GameObject: {fileID: 1997556699}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.63, y: 4.23, z: -2.68}
+  m_LocalPosition: {x: -0.63, y: 4.72, z: -2.68}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -90033,15 +90040,15 @@ PrefabInstance:
     m_Modifications:
     - target: {fileID: 655839108278016343, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 10.67
+      value: 13.381
       objectReference: {fileID: 0}
     - target: {fileID: 655839108278016343, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 3.5
+      value: 0.352
       objectReference: {fileID: 0}
     - target: {fileID: 655839108278016343, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
       propertyPath: m_LocalPosition.z
-      value: -33.02832
+      value: -14.913
       objectReference: {fileID: 0}
     - target: {fileID: 655839108278016343, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
       propertyPath: m_LocalRotation.w
@@ -90075,6 +90082,26 @@ PrefabInstance:
       propertyPath: m_Name
       value: Bau
       objectReference: {fileID: 0}
+    - target: {fileID: 2925855471877958829, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: digParticles
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: dustLifetime
+      value: 1.4
+      objectReference: {fileID: 0}
+    - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: dustMaxHeight
+      value: 0.13
+      objectReference: {fileID: 0}
+    - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: dustSpawnRadius
+      value: 1.11
+      objectReference: {fileID: 0}
     - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
       propertyPath: playerTransform
       value: 
@@ -90084,6 +90111,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 8607069174683633839, guid: 47c3d0771f9258b479ba32d01a823765, type: 3}
     - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: dustParticleCount
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
       propertyPath: 'particlePrefabs.Array.data[0]'
       value: 
       objectReference: {fileID: 2211208736362027439, guid: 47c3d0771f9258b479ba32d01a823765, type: 3}
@@ -90091,6 +90122,14 @@ PrefabInstance:
       propertyPath: 'particlePrefabs.Array.data[1]'
       value: 
       objectReference: {fileID: 1355270096928450537, guid: 9abb54b7510d82a489e1ed0472899aff, type: 3}
+    - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: dustParticlePrefabs.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4441992141214415317, guid: 8c511ecaf83dcba43853d21fd9f65387, type: 3}
+      propertyPath: 'dustParticlePrefabs.Array.data[0]'
+      value: 
+      objectReference: {fileID: 1162221763184475028, guid: 6d0fcb3fd25f0ac41b064b4e48ebd8e2, type: 3}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

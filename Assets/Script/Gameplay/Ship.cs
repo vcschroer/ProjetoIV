@@ -14,21 +14,30 @@ public class Ship : MonoBehaviour
     [SerializeField] private bool randomPhase = true;
 
     [Header("Piratas")]
-    [SerializeField] private Transform[] shipSpawnPoints;       // 3 pontos no convés do navio
+    [SerializeField] private Transform[] shipSpawnPoints;       // Pontos distintos no convés do navio
     [SerializeField] private GameObject playerInstance;          // Pirata Líder
-    [SerializeField] private GameObject[] extraPirateInstances; // Os outros 2 piratas
+    [SerializeField] private GameObject[] extraPirateInstances; // Os outros piratas
 
     [Header("Referências de Chão (Tiles)")]
     [SerializeField] private Transform landingTile;              // Bloco de chão onde eles pousam ao pular do navio
     [SerializeField] private Transform startTile;                // Bloco de chão onde a fase realmente começa
     [SerializeField] private float yOffsetAboveTile = 1.0f;       // Altura acima do bloco para o pirata pisar
 
-    [Header("Configurações de Animação")]
+    [Header("Configurações de Animação / Cutscene")]
+    [SerializeField] private float startDelay = 0.5f;            // Delay antes de iniciar desembarque
     [SerializeField] private float jumpFromShipDuration = 0.55f;
     [SerializeField] private float jumpFromShipArcHeight = 1.4f;
     [SerializeField] private float delayBetweenJumps = 0.15f;
     [SerializeField] private float walkSpeed = 5f;
     [SerializeField] private float stepJumpHeight = 0.4f;        // Altura do pulo tile a tile
+
+    [Header("Câmera / Zoom Cutscene")]
+    [SerializeField] private float cutsceneZoomDistance = 14.0f; // Distância durante a animação
+    [SerializeField] private float normalZoomDistance = 60.0f;   // Distância normal após a animação
+
+    [Header("Cutscene do Mapa do Tesouro")]
+    [SerializeField] private float mapDisplayDelay = 0.2f;        // Pequena pausa antes de exibir o mapa
+    [SerializeField] private float autoMinimizeDelay = 2.5f;     // Tempo em segundos que o mapa fica aberto
 
     private Vector3 basePosition;
     private Quaternion baseRotation;
@@ -50,10 +59,7 @@ public class Ship : MonoBehaviour
             StartFloating();
         }
 
-        // 1. Posiciona os piratas nos pontos do navio
         PositionPiratesOnShip();
-
-        // 2. Inicia a sequência de montagem e desembarque
         StartCoroutine(PirateLandingSequence());
     }
 
@@ -81,7 +87,12 @@ public class Ship : MonoBehaviour
 
     private void PositionPiratesOnShip()
     {
-        // Posiciona o Líder no Ponto 0
+        PirateStackManager stackManager = playerInstance != null ? playerInstance.GetComponent<PirateStackManager>() : null;
+        if (stackManager != null)
+        {
+            stackManager.enabled = false;
+        }
+
         if (shipSpawnPoints.Length > 0 && playerInstance != null)
         {
             playerInstance.transform.position = shipSpawnPoints[0].position;
@@ -89,7 +100,6 @@ public class Ship : MonoBehaviour
             playerInstance.transform.SetParent(transform);
         }
 
-        // Posiciona os Piratas Extras nos Pontos 1, 2, etc.
         for (int i = 0; i < extraPirateInstances.Length; i++)
         {
             if (i + 1 < shipSpawnPoints.Length && extraPirateInstances[i] != null)
@@ -97,7 +107,7 @@ public class Ship : MonoBehaviour
                 Transform spawnPoint = shipSpawnPoints[i + 1];
                 GameObject extraPirate = extraPirateInstances[i];
 
-                extraPirate.transform.SetParent(transform); // Garante parentesco com o navio
+                extraPirate.transform.SetParent(transform);
                 extraPirate.transform.position = spawnPoint.position;
                 extraPirate.transform.rotation = spawnPoint.rotation;
             }
@@ -106,50 +116,71 @@ public class Ship : MonoBehaviour
 
     private IEnumerator PirateLandingSequence()
     {
-        yield return null; // Aguarda a inicialização completa do GridManager
+        // Trava controles do jogador
+        PlayerController playerController = playerInstance != null ? playerInstance.GetComponent<PlayerController>() : null;
+        if (playerController != null)
+        {
+            playerController.SetInputLock(true);
+        }
+
+        // Aplica o zoom aproximado na câmera
+        IsometricOrbitCamera orbitCamera = Camera.main != null ? Camera.main.GetComponent<IsometricOrbitCamera>() : null;
+        if (orbitCamera != null)
+        {
+            orbitCamera.SetZoomLock(true, cutsceneZoomDistance);
+        }
+
+        yield return null;
+
+        if (startDelay > 0f)
+        {
+            yield return new WaitForSeconds(startDelay);
+        }
 
         if (landingTile == null)
         {
             Debug.LogError("O Landing Tile não foi atribuído no Inspector do Ship!");
+            if (playerController != null) playerController.SetInputLock(false);
+            if (orbitCamera != null) orbitCamera.SetZoomLock(false, normalZoomDistance);
             yield break;
         }
 
         Vector3 landingWorldPos = landingTile.position + Vector3.up * yOffsetAboveTile;
         PirateStackManager stackManager = playerInstance != null ? playerInstance.GetComponent<PirateStackManager>() : null;
 
-        // 1. MONTAGEM DA PILHA AINDA NO NAVIO
-        if (stackManager != null && extraPirateInstances != null)
+        // 1. PULO DO LÍDER PARA O LANDING TILE
+        if (playerInstance != null)
         {
-            float stepH = stackManager.StepHeight;
+            playerInstance.transform.SetParent(null);
+            yield return StartCoroutine(JumpPirateToGrid(playerInstance, landingWorldPos));
+        }
+
+        // 2. DEMAIS PIRATAS PULAM PARA A PILHA
+        if (extraPirateInstances != null)
+        {
+            float stepH = stackManager != null ? stackManager.StepHeight : 1.0f;
 
             for (int i = 0; i < extraPirateInstances.Length; i++)
             {
                 GameObject extraPirate = extraPirateInstances[i];
                 if (extraPirate == null) continue;
 
-                // Cada pirata pula para o topo da pilha no barco
-                yield return StartCoroutine(JumpPirateToStackOnShip(extraPirate, i + 1, stepH));
+                extraPirate.transform.SetParent(null);
+
+                Vector3 targetStackPos = landingWorldPos + Vector3.up * ((i + 1) * stepH);
+                yield return StartCoroutine(JumpPirateToGrid(extraPirate, targetStackPos));
+
+                if (stackManager != null)
+                {
+                    stackManager.AddToStackDirectly(extraPirate);
+                }
+
                 yield return new WaitForSeconds(delayBetweenJumps);
             }
-        }
 
-        yield return new WaitForSeconds(0.2f); // Pequena pausa dramática com a torre pronta no barco
-
-        // Desparenta todos do navio para moverem livremente no mundo
-        if (playerInstance != null) playerInstance.transform.SetParent(null);
-        foreach (var pirate in extraPirateInstances)
-        {
-            if (pirate != null) pirate.transform.SetParent(null);
-        }
-
-        // 2. PULO DA TORRE INTEIRA DO NAVIO PARA O LANDING TILE
-        if (playerInstance != null)
-        {
-            yield return StartCoroutine(JumpPirateToGrid(playerInstance, landingWorldPos));
-
-            // Impacto de pouso de toda a torre no chão
             if (stackManager != null)
             {
+                stackManager.enabled = true;
                 stackManager.TriggerStackImpact(topToBottom: true);
             }
         }
@@ -175,41 +206,28 @@ public class Ship : MonoBehaviour
                 Debug.LogWarning("GridManager não encontrou um caminho entre o LandingTile e o StartTile.");
             }
         }
-    }
 
-    private IEnumerator JumpPirateToStackOnShip(GameObject pirate, int stackIndex, float stepHeight)
-    {
-        Vector3 startPos = pirate.transform.position;
-        float elapsed = 0f;
-
-        while (elapsed < jumpFromShipDuration)
+        // 4. EXIBE O MAPA COM FADE IN E AGUARDA A MINIMIZAÇÃO COMPLETA
+        if (TreasureMapUI.Instance != null)
         {
-            elapsed += Time.deltaTime;
-            float progress = elapsed / jumpFromShipDuration;
-
-            // Target acompanha a posição do líder no barco (mesmo flutuando)
-            Vector3 targetPos = playerInstance.transform.position + Vector3.up * (stackIndex * stepHeight);
-
-            Vector3 currentPos = Vector3.Lerp(startPos, targetPos, progress);
-            currentPos.y += Mathf.Sin(progress * Mathf.PI) * jumpFromShipArcHeight;
-
-            pirate.transform.position = currentPos;
-
-            Vector3 lookDir = (targetPos - startPos);
-            lookDir.y = 0;
-            if (lookDir != Vector3.zero)
+            if (mapDisplayDelay > 0f)
             {
-                pirate.transform.rotation = Quaternion.LookRotation(lookDir);
+                yield return new WaitForSeconds(mapDisplayDelay);
             }
 
-            yield return null;
+            yield return TreasureMapUI.Instance.ShowIntroSequence(autoMinimizeDelay);
         }
 
-        // Encaixa oficialmente na pilha ao aterrissar no barco
-        PirateStackManager stackManager = playerInstance.GetComponent<PirateStackManager>();
-        if (stackManager != null)
+        // 5. REMOVE O ZOOM DA CÂMERA SOMENTE APÓS O MAPA MINIMIZAR
+        if (orbitCamera != null)
         {
-            stackManager.AddToStackDirectly(pirate);
+            orbitCamera.SetZoomLock(false, normalZoomDistance);
+        }
+
+        // 6. LIBERA OS CONTROLES DO JOGADOR
+        if (playerController != null)
+        {
+            playerController.SetInputLock(false);
         }
     }
 
@@ -243,7 +261,7 @@ public class Ship : MonoBehaviour
 
     private IEnumerator WalkPiratesToStartAlongPath(List<Vector3Int> path)
     {
-        PirateStackManager stackManager = playerInstance.GetComponent<PirateStackManager>();
+        PirateStackManager stackManager = playerInstance != null ? playerInstance.GetComponent<PirateStackManager>() : null;
 
         foreach (Vector3Int step in path)
         {
@@ -267,7 +285,6 @@ public class Ship : MonoBehaviour
                 elapsed += Time.deltaTime;
                 float progress = elapsed / stepDuration;
 
-                // Arco de pulo tile a tile
                 Vector3 currentPos = Vector3.Lerp(startPos, targetWorldPos, progress);
                 currentPos.y += Mathf.Sin(progress * Mathf.PI) * stepJumpHeight;
 
@@ -278,7 +295,6 @@ public class Ship : MonoBehaviour
 
             playerInstance.transform.position = targetWorldPos;
 
-            // Dispara o Juice completo de toda a pilha a cada passo
             if (stackManager != null)
             {
                 stackManager.OnPlayerStep();

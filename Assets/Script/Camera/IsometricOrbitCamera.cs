@@ -9,10 +9,11 @@ public class IsometricOrbitCamera : MonoBehaviour
     public Vector3 targetOffset = new Vector3(0, 1.5f, 0);
 
     [Header("Configurações de Zoom (Scroll)")]
-    public float distance = 25.0f;
+    public float distance = 60.0f;
     public float minDistance = 10.0f;
-    public float maxDistance = 45.0f;
+    public float maxDistance = 75.0f; // Aumentado para permitir a distância de 60
     public float zoomSensitivity = 2.0f;
+    public float zoomSmoothSpeed = 5.0f; // Velocidade da transição do zoom
 
     [Header("Sensibilidade do Mouse")]
     public float rotationSensitivityX = 0.2f;
@@ -27,9 +28,13 @@ public class IsometricOrbitCamera : MonoBehaviour
     private float groundedYPosition;
     private bool isOrbiting = false;
 
+    private float targetDistance;
+    private bool isZoomLocked = false;
+
     void Start()
     {
         if (target != null) groundedYPosition = target.position.y;
+        targetDistance = distance;
     }
 
     void LateUpdate()
@@ -46,15 +51,13 @@ public class IsometricOrbitCamera : MonoBehaviour
                     CursorManager.Instance.SetCursorType(CursorState.Default);
             }
 
-            // Atualiza a posição da câmera para acompanhar o alvo, mas sem aceitar rotação/zoom
             UpdateCameraPosition();
             return;
         }
 
-        // Início da rotação (botão do meio)
+        // Início da rotação (botão do meio) -> Funciona durante a cutscene!
         if (Mouse.current.middleButton.wasPressedThisFrame)
         {
-            // TRAVA 2: Evita começar a orbitar se o clique for sobre um elemento da UI
             if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
             {
                 isOrbiting = true;
@@ -80,19 +83,36 @@ public class IsometricOrbitCamera : MonoBehaviour
             currentPitch = Mathf.Clamp(currentPitch, minPitch, maxPitch);
         }
 
-        // Controle de Zoom pelo Scroll
-        float scrollValue = Mouse.current.scroll.ReadValue().y;
-        if (Mathf.Abs(scrollValue) > 0.01f)
+        // Controle de Zoom pelo Scroll (Bloqueado durante cutscenes)
+        if (!isZoomLocked)
         {
-            // Ignora o zoom se o mouse estiver sobre algum elemento de UI
-            if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+            float scrollValue = Mouse.current.scroll.ReadValue().y;
+            if (Mathf.Abs(scrollValue) > 0.01f)
             {
-                distance -= (scrollValue / 120.0f) * zoomSensitivity;
-                distance = Mathf.Clamp(distance, minDistance, maxDistance);
+                if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+                {
+                    targetDistance -= (scrollValue / 120.0f) * zoomSensitivity;
+                    targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);
+                }
             }
         }
 
+        // Transição suave do zoom para a targetDistance
+        distance = Mathf.Lerp(distance, targetDistance, Time.deltaTime * zoomSmoothSpeed);
+
         UpdateCameraPosition();
+    }
+
+    /// <summary>
+    /// Bloqueia ou libera o zoom do scroll. Se passar uma nova distância, transiciona suavemente até ela.
+    /// </summary>
+    public void SetZoomLock(bool locked, float newDistance = -1f)
+    {
+        isZoomLocked = locked;
+        if (newDistance > 0f)
+        {
+            targetDistance = Mathf.Clamp(newDistance, minDistance, maxDistance);
+        }
     }
 
     private void UpdateCameraPosition()

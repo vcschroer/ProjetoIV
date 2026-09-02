@@ -1,21 +1,20 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI; // Necessário para Image e Button
-using UnityEngine.EventSystems; // Necessário para detectar cliques e arrastos na UI
+using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IDragHandler
 {
-    // Singleton para acesso global pelos scripts de movimentação e câmera
     public static TreasureMapUI Instance { get; private set; }
     public bool IsExpanded => isExpanded;
 
     [Header("Referências da UI")]
     [SerializeField] private RectTransform mapParchment; // O painel/imagem do papel do mapa
-    [SerializeField] private Image backgroundPanel;     // O painel preto de fundo (UI Image/Panel)
+    [SerializeField] private Image backgroundPanel;     // O painel preto de fundo
     [SerializeField] private GameObject pathDotPrefab;  // Prefab de um pontinho (UI Image)
-    [SerializeField] private GameObject startMarkPrefab; // Prefab do Início (Ex: Barco Pirata)
-    [SerializeField] private GameObject xMarkPrefab;    // Prefab do ícone 'X' Final (UI Image)
+    [SerializeField] private GameObject startMarkPrefab; // Prefab do Início
+    [SerializeField] private GameObject xMarkPrefab;    // Prefab do ícone 'X' Final
 
     [Header("Configurações do Fundo Escuro")]
     [Range(0f, 1f)]
@@ -25,8 +24,7 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
     [SerializeField] private float dotSpacing = 22f;
     [SerializeField] private float startIconClearance = 45f;
     [SerializeField] private float endIconClearance = 35f;
-
-    [SerializeField] private float padding = 20f;        // Margem para não colar na borda
+    [SerializeField] private float padding = 20f;
     [SerializeField] private Vector2 mapCenterOffset = Vector2.zero;
 
     [Header("Ajustes de Diagonais e Rotação do Desenho")]
@@ -38,6 +36,7 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
     [SerializeField] private Vector3 expandedScale = new Vector3(2.5f, 2.5f, 1f);
     [SerializeField] private float animationDuration = 0.25f;
     [SerializeField] private bool centerWhenExpanded = true;
+    [SerializeField] private bool startHidden = true; // Inicia invisível até a cutscene acioná-lo
 
     [Header("Configurações de Rotação pelo Jogador")]
     [SerializeField] private float clickThreshold = 10f;
@@ -49,10 +48,13 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
     private bool isExpanded = false;
     private bool isAnimating = false;
+    private bool isHidden = false;
+    private bool isIntroRunning = false; // Trava o clique do jogador durante a intro
     private Coroutine resizeCoroutine;
     private Vector2 originalAnchoredPosition;
     private Vector2 pointerDownPosition;
     private float initialAngleOffset;
+    private CanvasGroup mapCanvasGroup;
 
     private void Awake()
     {
@@ -69,6 +71,19 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
         if (mapParchment != null)
         {
             originalAnchoredPosition = mapParchment.anchoredPosition;
+
+            // Adiciona ou obtém o CanvasGroup para controle de transparência (Fade)
+            mapCanvasGroup = mapParchment.GetComponent<CanvasGroup>();
+            if (mapCanvasGroup == null)
+            {
+                mapCanvasGroup = mapParchment.gameObject.AddComponent<CanvasGroup>();
+            }
+
+            if (startHidden)
+            {
+                isHidden = true;
+                mapCanvasGroup.alpha = 0f;
+            }
         }
 
         if (backgroundPanel != null)
@@ -83,14 +98,14 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
             {
                 bgButton = backgroundPanel.gameObject.AddComponent<Button>();
             }
-            bgButton.transition = Selectable.Transition.None; 
+            bgButton.transition = Selectable.Transition.None;
             bgButton.onClick.AddListener(OnBackgroundClicked);
         }
     }
 
     private void Update()
     {
-        if (usarWobble && !isExpanded && !isAnimating && mapParchment != null)
+        if (usarWobble && !isExpanded && !isAnimating && !isHidden && mapParchment != null)
         {
             float angulo = Mathf.Sin(Time.time * velocidadeWobble) * anguloMaximoWobble;
             mapParchment.localRotation = Quaternion.Euler(0f, 0f, angulo);
@@ -99,7 +114,8 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
     private void OnBackgroundClicked()
     {
-        if (isExpanded && !isAnimating)
+        // Impede minimizar pelo fundo se estiver animando ou na sequência da intro
+        if (isExpanded && !isAnimating && !isIntroRunning)
         {
             ToggleExpand();
         }
@@ -107,22 +123,22 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
     public void OnPointerDown(PointerEventData eventData)
     {
+        if (isHidden) return;
+
         pointerDownPosition = eventData.position;
 
         if (isExpanded && mapParchment != null)
         {
             Vector2 mapScreenPos = RectTransformUtility.WorldToScreenPoint(eventData.pressEventCamera, mapParchment.position);
             Vector2 dir = eventData.position - mapScreenPos;
-
             float mouseAngle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-
             initialAngleOffset = mapParchment.eulerAngles.z - mouseAngle;
         }
     }
 
     public void OnDrag(PointerEventData eventData)
     {
-        if (!isExpanded || mapParchment == null) return;
+        if (isHidden || !isExpanded || mapParchment == null) return;
 
         Vector2 mapScreenPos = RectTransformUtility.WorldToScreenPoint(eventData.pressEventCamera, mapParchment.position);
         Vector2 dir = eventData.position - mapScreenPos;
@@ -133,6 +149,8 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (isHidden || isIntroRunning) return;
+
         if (Vector2.Distance(pointerDownPosition, eventData.position) > clickThreshold)
         {
             return;
@@ -144,9 +162,10 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
         }
     }
 
-
     public void ToggleExpand()
     {
+        if (isHidden || isIntroRunning) return;
+
         isExpanded = !isExpanded;
 
         if (resizeCoroutine != null)
@@ -156,10 +175,94 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
         Vector3 targetScale = isExpanded ? expandedScale : minimizedScale;
         Vector2 targetPos = (isExpanded && centerWhenExpanded) ? Vector2.zero : originalAnchoredPosition;
-
         Quaternion targetRot = isExpanded ? mapParchment.localRotation : Quaternion.identity;
 
         resizeCoroutine = StartCoroutine(AnimateMap(targetScale, targetPos, targetRot));
+    }
+
+    /// <summary>
+    /// Exibe o mapa usando FADE IN no centro, aguarda o tempo determinado e minimiza.
+    /// </summary>
+    public Coroutine ShowIntroSequence(float autoMinimizeDelay)
+    {
+        if (resizeCoroutine != null)
+        {
+            StopCoroutine(resizeCoroutine);
+        }
+
+        return StartCoroutine(FadeInIntroSequenceCoroutine(autoMinimizeDelay));
+    }
+
+    private IEnumerator FadeInIntroSequenceCoroutine(float autoMinimizeDelay)
+    {
+        isIntroRunning = true; // Bloqueia a ação do jogador
+        isHidden = false;
+        isExpanded = true;
+        isAnimating = true;
+
+        // Prepara o mapa centralizado e na escala expandida antes do fade
+        mapParchment.localScale = expandedScale;
+        mapParchment.anchoredPosition = centerWhenExpanded ? Vector2.zero : originalAnchoredPosition;
+        mapParchment.localRotation = Quaternion.identity;
+
+        if (backgroundPanel != null)
+        {
+            backgroundPanel.raycastTarget = true;
+        }
+
+        float startAlphaMap = mapCanvasGroup != null ? mapCanvasGroup.alpha : 0f;
+        float startAlphaBg = backgroundPanel != null ? backgroundPanel.color.a : 0f;
+        float targetAlphaBg = maxBackgroundAlpha;
+
+        float elapsed = 0f;
+
+        // Animação de Fade In
+        while (elapsed < animationDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / animationDuration);
+
+            if (mapCanvasGroup != null)
+            {
+                mapCanvasGroup.alpha = Mathf.Lerp(startAlphaMap, 1f, t);
+            }
+
+            if (backgroundPanel != null)
+            {
+                Color c = backgroundPanel.color;
+                c.a = Mathf.Lerp(startAlphaBg, targetAlphaBg, t);
+                backgroundPanel.color = c;
+            }
+
+            yield return null;
+        }
+
+        if (mapCanvasGroup != null) mapCanvasGroup.alpha = 1f;
+        if (backgroundPanel != null)
+        {
+            Color c = backgroundPanel.color;
+            c.a = targetAlphaBg;
+            backgroundPanel.color = c;
+        }
+
+        isAnimating = false;
+
+        // Pausa com o mapa aberto (O jogador não conseguirá fechar durante este tempo)
+        if (autoMinimizeDelay > 0f)
+        {
+            yield return new WaitForSeconds(autoMinimizeDelay);
+        }
+
+        isIntroRunning = false; // Libera a trava do jogador pouco antes de minimizar
+
+        // Minimiza o mapa para o canto
+        ToggleExpand();
+
+        // Aguarda a animação de minimização concluir completamente antes de liberar o Ship.cs
+        while (isAnimating)
+        {
+            yield return null;
+        }
     }
 
     private IEnumerator AnimateMap(Vector3 targetScale, Vector2 targetPosition, Quaternion targetRotation)
@@ -183,8 +286,7 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
         while (elapsed < animationDuration)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / animationDuration;
-            t = Mathf.SmoothStep(0f, 1f, t); 
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / animationDuration);
 
             mapParchment.localScale = Vector3.Lerp(startScale, targetScale, t);
             mapParchment.anchoredPosition = Vector2.Lerp(startPos, targetPosition, t);
@@ -203,6 +305,11 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
         mapParchment.localScale = targetScale;
         mapParchment.anchoredPosition = targetPosition;
         mapParchment.localRotation = targetRotation;
+
+        if (mapCanvasGroup != null)
+        {
+            mapCanvasGroup.alpha = 1f;
+        }
 
         if (backgroundPanel != null)
         {

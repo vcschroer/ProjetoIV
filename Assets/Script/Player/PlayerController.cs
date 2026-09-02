@@ -15,12 +15,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private ParticleSystem dustParticles;
 
     private bool isMoving = false;
+    private bool isInputLocked = false; // Trava para cutscenes / animações
 
     private void Update()
     {
-        if (isMoving) return;
+        // Se estiver se movendo OU se o controle estiver travado por cutscene, ignora cliques
+        if (isMoving || isInputLocked) return;
 
-        // TRAVA DE UI: Se o mapa do tesouro estiver expandido ou o cursor estiver sobre a UI, ignora cliques de movimentação no mundo 3D
+        // TRAVA DE UI: Se o mapa do tesouro estiver expandido ou o cursor estiver sobre a UI, ignora cliques
         if ((TreasureMapUI.Instance != null && TreasureMapUI.Instance.IsExpanded) ||
             (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
         {
@@ -32,6 +34,16 @@ public class PlayerController : MonoBehaviour
             HandleLeftClick();
         }
     }
+
+    /// <summary>
+    /// Permite bloquear ou liberar o controle do jogador externamente (ex: cutscenes do navio).
+    /// </summary>
+    public void SetInputLock(bool locked)
+    {
+        isInputLocked = locked;
+    }
+
+    public bool IsInputLocked => isInputLocked;
 
     private void HandleLeftClick()
     {
