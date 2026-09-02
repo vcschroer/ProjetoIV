@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems; // Necessário para verificar interações com a UI
 
 public class PlayerController : MonoBehaviour
 {
@@ -18,6 +19,13 @@ public class PlayerController : MonoBehaviour
     private void Update()
     {
         if (isMoving) return;
+
+        // TRAVA DE UI: Se o mapa do tesouro estiver expandido ou o cursor estiver sobre a UI, ignora cliques de movimentação no mundo 3D
+        if ((TreasureMapUI.Instance != null && TreasureMapUI.Instance.IsExpanded) ||
+            (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
+        {
+            return;
+        }
 
         if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
@@ -51,7 +59,7 @@ public class PlayerController : MonoBehaviour
                         if (GridManager.Instance.GetTileAt(groundCheckPos) == null)
                         {
                             isPathValid = false;
-                            break; 
+                            break;
                         }
                     }
 

@@ -29,8 +29,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2483500949808293430}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10, y: 1, z: -15}
+  m_LocalRotation: {x: 0, y: 0.9132943, z: 0, w: -0.40730032}
+  m_LocalPosition: {x: 20, y: -1, z: -14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -149,6 +149,8 @@ MonoBehaviour:
   stackedPirates:
   - {fileID: 0}
   - {fileID: 0}
+  - {fileID: 1778682455631701699, guid: 1a7349806d8f1274285a8f240ebd4503, type: 3}
+  - {fileID: 9181807484444457389, guid: ee50282d85f240240b934cf36ea6b72b, type: 3}
   stepHeight: 1
   jumpDuration: 0.25
   defaultWalkableData: {fileID: 0}
@@ -5041,7 +5043,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.7071068
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalRotation.x
@@ -5049,7 +5051,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.7071068
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 0f5e22a550ae51c40bfe08697f36308f, type: 3}
       propertyPath: m_LocalRotation.z
@@ -5110,13 +5112,19 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::PirateJuice
   bounceIntensity: 0.15
   bounceDuration: 0.2
+  swayDuration: 0.45
+  tiltAngle: 5
+  forwardOvershootRatio: 0.6
+  tiltAxis: {x: 1, y: 0, z: 0}
+  upLiftIntensity: 0.08
+  backShiftIntensity: 0.15
   dropSquashAmount: 0.35
   dropDuration: 0.25
   pickupStretchAmount: 0.4
   pickupDuration: 0.25
   floatAmplitude: 0.08
   floatSpeed: 2
-  tiltAngle: 5
+  floatTiltAngle: 5
 --- !u!65 &2774169416651684917
 BoxCollider:
   m_ObjectHideFlags: 0

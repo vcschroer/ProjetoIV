@@ -478,4 +478,18 @@ public class PirateStackManager : MonoBehaviour
             }
         }
     }
+
+    public void AddToStackDirectly(GameObject pirate)
+    {
+        if (pirate == null) return;
+
+        Collider col = pirate.GetComponent<Collider>();
+        if (col != null) col.enabled = false;
+
+        pirate.tag = "Untagged";
+        SetLayerRecursively(pirate, LayerMask.NameToLayer("Default"));
+
+        stackedPirates.Add(pirate);
+        TriggerStackImpact(topToBottom: true);
+    }
 }

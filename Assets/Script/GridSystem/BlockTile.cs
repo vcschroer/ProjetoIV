@@ -51,6 +51,12 @@ public class BlockTile : MonoBehaviour
     {
         if (outlineObject != null)
         {
+            if (state && TreasureMapUI.Instance != null && TreasureMapUI.Instance.IsExpanded)
+            {
+                outlineObject.SetActive(false);
+                return;
+            }
+
             outlineObject.SetActive(state);
         }
     }

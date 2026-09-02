@@ -1,37 +1,226 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI; // Necessário para Image e Button
+using UnityEngine.EventSystems; // Necessário para detectar cliques e arrastos na UI
 
-public class TreasureMapUI : MonoBehaviour
+public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHandler, IDragHandler
 {
+    // Singleton para acesso global pelos scripts de movimentação e câmera
+    public static TreasureMapUI Instance { get; private set; }
+    public bool IsExpanded => isExpanded;
+
     [Header("Referências da UI")]
     [SerializeField] private RectTransform mapParchment; // O painel/imagem do papel do mapa
+    [SerializeField] private Image backgroundPanel;     // O painel preto de fundo (UI Image/Panel)
     [SerializeField] private GameObject pathDotPrefab;  // Prefab de um pontinho (UI Image)
     [SerializeField] private GameObject startMarkPrefab; // Prefab do Início (Ex: Barco Pirata)
     [SerializeField] private GameObject xMarkPrefab;    // Prefab do ícone 'X' Final (UI Image)
 
+    [Header("Configurações do Fundo Escuro")]
+    [Range(0f, 1f)]
+    [SerializeField] private float maxBackgroundAlpha = 0.75f;
+
     [Header("Configurações do Desenho")]
-    [Tooltip("Distância exata em pixels entre o centro de cada pontinho.")]
     [SerializeField] private float dotSpacing = 22f;
-
-    [Tooltip("Margem livre entre o Barco Inicial e o primeiro pontinho.")]
     [SerializeField] private float startIconClearance = 45f;
-
-    [Tooltip("Margem livre entre o último pontinho e o X Final.")]
     [SerializeField] private float endIconClearance = 35f;
 
     [SerializeField] private float padding = 20f;        // Margem para não colar na borda
     [SerializeField] private Vector2 mapCenterOffset = Vector2.zero;
 
-    [Header("Ajustes de Diagonais e Rotação")]
-    [Tooltip("Simplifica passos em formato de 'escada' transformando-os em diagonais retas.")]
+    [Header("Ajustes de Diagonais e Rotação do Desenho")]
     [SerializeField] private bool smoothDiagonalSteps = true;
-
-    [Tooltip("Ajuste se o sprite do seu pontinho estiver na vertical no Prefab (ex: 90 ou -90).")]
     [SerializeField] private float spriteRotationOffset = 0f;
+
+    [Header("Configurações de Expansão (Clique)")]
+    [SerializeField] private Vector3 minimizedScale = Vector3.one;
+    [SerializeField] private Vector3 expandedScale = new Vector3(2.5f, 2.5f, 1f);
+    [SerializeField] private float animationDuration = 0.25f;
+    [SerializeField] private bool centerWhenExpanded = true;
+
+    [Header("Configurações de Rotação pelo Jogador")]
+    [SerializeField] private float clickThreshold = 10f;
+
+    [Header("Configurações de Wobble (Minimizado)")]
+    [SerializeField] private bool usarWobble = true;
+    [SerializeField] private float velocidadeWobble = 4f;
+    [SerializeField] private float anguloMaximoWobble = 8f;
+
+    private bool isExpanded = false;
+    private bool isAnimating = false;
+    private Coroutine resizeCoroutine;
+    private Vector2 originalAnchoredPosition;
+    private Vector2 pointerDownPosition;
+    private float initialAngleOffset;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        if (mapParchment != null)
+        {
+            originalAnchoredPosition = mapParchment.anchoredPosition;
+        }
+
+        if (backgroundPanel != null)
+        {
+            Color c = backgroundPanel.color;
+            c.a = 0f;
+            backgroundPanel.color = c;
+            backgroundPanel.raycastTarget = false;
+
+            Button bgButton = backgroundPanel.GetComponent<Button>();
+            if (bgButton == null)
+            {
+                bgButton = backgroundPanel.gameObject.AddComponent<Button>();
+            }
+            bgButton.transition = Selectable.Transition.None; 
+            bgButton.onClick.AddListener(OnBackgroundClicked);
+        }
+    }
+
+    private void Update()
+    {
+        if (usarWobble && !isExpanded && !isAnimating && mapParchment != null)
+        {
+            float angulo = Mathf.Sin(Time.time * velocidadeWobble) * anguloMaximoWobble;
+            mapParchment.localRotation = Quaternion.Euler(0f, 0f, angulo);
+        }
+    }
+
+    private void OnBackgroundClicked()
+    {
+        if (isExpanded && !isAnimating)
+        {
+            ToggleExpand();
+        }
+    }
+
+    public void OnPointerDown(PointerEventData eventData)
+    {
+        pointerDownPosition = eventData.position;
+
+        if (isExpanded && mapParchment != null)
+        {
+            Vector2 mapScreenPos = RectTransformUtility.WorldToScreenPoint(eventData.pressEventCamera, mapParchment.position);
+            Vector2 dir = eventData.position - mapScreenPos;
+
+            float mouseAngle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+
+            initialAngleOffset = mapParchment.eulerAngles.z - mouseAngle;
+        }
+    }
+
+    public void OnDrag(PointerEventData eventData)
+    {
+        if (!isExpanded || mapParchment == null) return;
+
+        Vector2 mapScreenPos = RectTransformUtility.WorldToScreenPoint(eventData.pressEventCamera, mapParchment.position);
+        Vector2 dir = eventData.position - mapScreenPos;
+        float currentMouseAngle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
+
+        mapParchment.rotation = Quaternion.Euler(0f, 0f, currentMouseAngle + initialAngleOffset);
+    }
+
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (Vector2.Distance(pointerDownPosition, eventData.position) > clickThreshold)
+        {
+            return;
+        }
+
+        if (!isExpanded)
+        {
+            ToggleExpand();
+        }
+    }
+
+
+    public void ToggleExpand()
+    {
+        isExpanded = !isExpanded;
+
+        if (resizeCoroutine != null)
+        {
+            StopCoroutine(resizeCoroutine);
+        }
+
+        Vector3 targetScale = isExpanded ? expandedScale : minimizedScale;
+        Vector2 targetPos = (isExpanded && centerWhenExpanded) ? Vector2.zero : originalAnchoredPosition;
+
+        Quaternion targetRot = isExpanded ? mapParchment.localRotation : Quaternion.identity;
+
+        resizeCoroutine = StartCoroutine(AnimateMap(targetScale, targetPos, targetRot));
+    }
+
+    private IEnumerator AnimateMap(Vector3 targetScale, Vector2 targetPosition, Quaternion targetRotation)
+    {
+        isAnimating = true;
+
+        if (isExpanded && backgroundPanel != null)
+        {
+            backgroundPanel.raycastTarget = true;
+        }
+
+        Vector3 startScale = mapParchment.localScale;
+        Vector2 startPos = mapParchment.anchoredPosition;
+        Quaternion startRot = mapParchment.localRotation;
+
+        float startAlpha = backgroundPanel != null ? backgroundPanel.color.a : 0f;
+        float targetAlpha = isExpanded ? maxBackgroundAlpha : 0f;
+
+        float elapsed = 0f;
+
+        while (elapsed < animationDuration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / animationDuration;
+            t = Mathf.SmoothStep(0f, 1f, t); 
+
+            mapParchment.localScale = Vector3.Lerp(startScale, targetScale, t);
+            mapParchment.anchoredPosition = Vector2.Lerp(startPos, targetPosition, t);
+            mapParchment.localRotation = Quaternion.Slerp(startRot, targetRotation, t);
+
+            if (backgroundPanel != null)
+            {
+                Color c = backgroundPanel.color;
+                c.a = Mathf.Lerp(startAlpha, targetAlpha, t);
+                backgroundPanel.color = c;
+            }
+
+            yield return null;
+        }
+
+        mapParchment.localScale = targetScale;
+        mapParchment.anchoredPosition = targetPosition;
+        mapParchment.localRotation = targetRotation;
+
+        if (backgroundPanel != null)
+        {
+            Color finalColor = backgroundPanel.color;
+            finalColor.a = targetAlpha;
+            backgroundPanel.color = finalColor;
+
+            if (!isExpanded)
+            {
+                backgroundPanel.raycastTarget = false;
+            }
+        }
+
+        isAnimating = false;
+    }
 
     public void GenerateMapPath(List<Vector3Int> gridPath)
     {
-        // 1. Limpa o mapa antigo
         foreach (Transform child in mapParchment)
         {
             Destroy(child.gameObject);
@@ -39,7 +228,6 @@ public class TreasureMapUI : MonoBehaviour
 
         if (gridPath == null || gridPath.Count < 2) return;
 
-        // 2. Projeta o caminho 3D para 2D (X, Z), removendo duplicatas
         List<Vector2Int> path2D = new List<Vector2Int>();
         foreach (var pos3D in gridPath)
         {
@@ -52,13 +240,11 @@ public class TreasureMapUI : MonoBehaviour
 
         if (path2D.Count < 2) return;
 
-        // 3. Suaviza os zig-zags de 1 bloco em linhas diagonais diretas
         if (smoothDiagonalSteps)
         {
             path2D = SimplifyZigzags(path2D);
         }
 
-        // 4. Encontra os limites (Mínimo e Máximo) do trajeto
         int minX = int.MaxValue, maxX = int.MinValue;
         int minZ = int.MaxValue, maxZ = int.MinValue;
 
@@ -73,7 +259,6 @@ public class TreasureMapUI : MonoBehaviour
         float pathWidth = Mathf.Max(1, maxX - minX);
         float pathHeight = Mathf.Max(1, maxZ - minZ);
 
-        // 5. Calcula a escala ideal para encaixar no pergaminho
         float availableWidth = mapParchment.rect.width - (padding * 2f);
         float availableHeight = mapParchment.rect.height - (padding * 2f);
 
@@ -83,7 +268,6 @@ public class TreasureMapUI : MonoBehaviour
 
         Vector2 pathCenter = new Vector2((minX + maxX) / 2f, (minZ + maxZ) / 2f);
 
-        // 6. Converte os waypoints do grid para coordenadas no Canvas
         List<Vector2> waypoints = new List<Vector2>();
         for (int i = 0; i < path2D.Count; i++)
         {
@@ -96,20 +280,16 @@ public class TreasureMapUI : MonoBehaviour
             waypoints.Add(canvasPos);
         }
 
-        // --- CÁLCULO DE DISTÂNCIA TOTAL ---
         float totalPathLength = 0f;
         for (int i = 0; i < waypoints.Count - 1; i++)
         {
             totalPathLength += Vector2.Distance(waypoints[i], waypoints[i + 1]);
         }
 
-        // 7. Amostra os pontinhos com distância uniforme, respeitando as áreas livres
         List<Vector2> dotPositions = new List<Vector2>();
         List<Vector2> dotDirections = new List<Vector2>();
 
         float accumulatedDist = 0f;
-
-        // Começa a colocar pontos apenas DEPOIS da margem do ícone inicial
         float nextDotDist = startIconClearance;
 
         for (int i = 0; i < waypoints.Count - 1; i++)
@@ -122,7 +302,6 @@ public class TreasureMapUI : MonoBehaviour
 
             Vector2 segDir = (pEnd - pStart).normalized;
 
-            // O ponto precisa estar dentro do segmento atual E antes da margem do ícone final
             while (nextDotDist <= accumulatedDist + segLength && nextDotDist <= totalPathLength - endIconClearance)
             {
                 float t = (nextDotDist - accumulatedDist) / segLength;
@@ -137,7 +316,6 @@ public class TreasureMapUI : MonoBehaviour
             accumulatedDist += segLength;
         }
 
-        // 8. Instancia e rotaciona os pontinhos
         for (int i = 0; i < dotPositions.Count; i++)
         {
             GameObject spawnedDot = Instantiate(pathDotPrefab, mapParchment);
@@ -152,33 +330,26 @@ public class TreasureMapUI : MonoBehaviour
             }
         }
 
-        // 9. Instancia os ícones de Início e Fim (Barco e X)
         if (waypoints.Count > 0)
         {
-            // Ícone Inicial
             if (startMarkPrefab != null)
             {
                 GameObject spawnedStart = Instantiate(startMarkPrefab, mapParchment);
                 RectTransform startRect = spawnedStart.GetComponent<RectTransform>();
                 startRect.anchoredPosition = waypoints[0];
-                startRect.localRotation = Quaternion.identity; // Mantém reto
+                startRect.localRotation = Quaternion.identity;
             }
 
-            // Ícone Final (X)
             if (xMarkPrefab != null)
             {
                 GameObject spawnedX = Instantiate(xMarkPrefab, mapParchment);
                 RectTransform xRect = spawnedX.GetComponent<RectTransform>();
                 xRect.anchoredPosition = waypoints[waypoints.Count - 1];
-                xRect.localRotation = Quaternion.identity; // Mantém reto
+                xRect.localRotation = Quaternion.identity;
             }
         }
     }
 
-    /// <summary>
-    /// Converte passos alternados em "escada" (ex: Cima -> Direita -> Cima)
-    /// em um segmento diagonal reto e contínuo.
-    /// </summary>
     private List<Vector2Int> SimplifyZigzags(List<Vector2Int> path)
     {
         if (path.Count < 3) return path;

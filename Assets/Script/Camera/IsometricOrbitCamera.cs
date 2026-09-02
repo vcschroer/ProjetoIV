@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.EventSystems; // Necessário para verificar se o cursor está sobre a UI
 
 public class IsometricOrbitCamera : MonoBehaviour
 {
@@ -35,13 +36,34 @@ public class IsometricOrbitCamera : MonoBehaviour
     {
         if (target == null || Mouse.current == null) return;
 
-        if (Mouse.current.middleButton.wasPressedThisFrame)
+        // TRAVA 1: Se o mapa do tesouro estiver expandido, cancela a órbita e ignora comandos de câmera
+        if (TreasureMapUI.Instance != null && TreasureMapUI.Instance.IsExpanded)
         {
-            isOrbiting = true;
-            if (CursorManager.Instance != null)
-                CursorManager.Instance.SetCursorType(CursorState.OrbitingCamera);
+            if (isOrbiting)
+            {
+                isOrbiting = false;
+                if (CursorManager.Instance != null)
+                    CursorManager.Instance.SetCursorType(CursorState.Default);
+            }
+
+            // Atualiza a posição da câmera para acompanhar o alvo, mas sem aceitar rotação/zoom
+            UpdateCameraPosition();
+            return;
         }
 
+        // Início da rotação (botão do meio)
+        if (Mouse.current.middleButton.wasPressedThisFrame)
+        {
+            // TRAVA 2: Evita começar a orbitar se o clique for sobre um elemento da UI
+            if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+            {
+                isOrbiting = true;
+                if (CursorManager.Instance != null)
+                    CursorManager.Instance.SetCursorType(CursorState.OrbitingCamera);
+            }
+        }
+
+        // Término da rotação
         if (Mouse.current.middleButton.wasReleasedThisFrame)
         {
             isOrbiting = false;
@@ -49,6 +71,7 @@ public class IsometricOrbitCamera : MonoBehaviour
                 CursorManager.Instance.SetCursorType(CursorState.Default);
         }
 
+        // Aplica a rotação se estiver orbitando
         if (isOrbiting)
         {
             Vector2 mouseDelta = Mouse.current.delta.ReadValue();
@@ -57,13 +80,23 @@ public class IsometricOrbitCamera : MonoBehaviour
             currentPitch = Mathf.Clamp(currentPitch, minPitch, maxPitch);
         }
 
+        // Controle de Zoom pelo Scroll
         float scrollValue = Mouse.current.scroll.ReadValue().y;
         if (Mathf.Abs(scrollValue) > 0.01f)
         {
-            distance -= (scrollValue / 120.0f) * zoomSensitivity;
-            distance = Mathf.Clamp(distance, minDistance, maxDistance);
+            // Ignora o zoom se o mouse estiver sobre algum elemento de UI
+            if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+            {
+                distance -= (scrollValue / 120.0f) * zoomSensitivity;
+                distance = Mathf.Clamp(distance, minDistance, maxDistance);
+            }
         }
 
+        UpdateCameraPosition();
+    }
+
+    private void UpdateCameraPosition()
+    {
         groundedYPosition = Mathf.Lerp(groundedYPosition, target.position.y, Time.deltaTime * 3.0f);
         Quaternion finalRotation = Quaternion.Euler(currentPitch, currentYaw, 0);
         Vector3 focusPoint = new Vector3(target.position.x, groundedYPosition, target.position.z) + targetOffset;

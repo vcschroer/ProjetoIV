@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 5711966926721816207}
   - component: {fileID: 3536193146924681005}
   - component: {fileID: 1399751201771272769}
-  m_Layer: 6
+  m_Layer: 0
   m_Name: Outline_Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -104,7 +104,7 @@ GameObject:
   - component: {fileID: 9095233538268975156}
   - component: {fileID: 5527813132796500638}
   - component: {fileID: 974558694101556748}
-  m_Layer: 3
+  m_Layer: 0
   m_Name: Papagaio
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -120,7 +120,7 @@ Transform:
   m_GameObject: {fileID: 9181807484444457389}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 10, y: 3, z: -15}
+  m_LocalPosition: {x: 18, y: 6, z: -16}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -202,10 +202,10 @@ BoxCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 3
-  m_Size: {x: 0.93583393, y: 0.8606212, z: 0.9877777}
-  m_Center: {x: 0.0015282631, y: 0.010580182, z: 0.006111145}
+  m_Size: {x: 0.93583393, y: 0.8577101, z: 0.9877777}
+  m_Center: {x: 0.0015282631, y: -0.31990874, z: 0.006111145}
 --- !u!114 &5527813132796500638
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -271,7 +271,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 26cb86e289a58ce43818a15cc537d6e8, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.7071068
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 26cb86e289a58ce43818a15cc537d6e8, type: 3}
       propertyPath: m_LocalRotation.x
@@ -279,7 +279,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 26cb86e289a58ce43818a15cc537d6e8, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.7071068
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 26cb86e289a58ce43818a15cc537d6e8, type: 3}
       propertyPath: m_LocalRotation.z
@@ -303,7 +303,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 26cb86e289a58ce43818a15cc537d6e8, type: 3}
       propertyPath: m_Layer
-      value: 3
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -338,11 +338,11 @@ MonoBehaviour:
   bounceIntensity: 0.15
   bounceDuration: 0.2
   swayDuration: 0.45
-  tiltAngle: 5
+  tiltAngle: 10
   forwardOvershootRatio: 0.6
-  tiltAxis: {x: 1, y: 0, z: 0}
+  tiltAxis: {x: 1, y: 0, z: -2}
   upLiftIntensity: 0.08
-  backShiftIntensity: 0.15
+  backShiftIntensity: 0.35
   dropSquashAmount: 0.35
   dropDuration: 0.25
   pickupStretchAmount: 0.4
