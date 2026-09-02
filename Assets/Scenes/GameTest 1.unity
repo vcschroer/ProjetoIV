@@ -31399,6 +31399,10 @@ PrefabInstance:
       value: Player
       objectReference: {fileID: 0}
     - target: {fileID: 5054846002286694674, guid: 71038ae0dcac4f24e9ea132e23dae547, type: 3}
+      propertyPath: stepHeight
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5054846002286694674, guid: 71038ae0dcac4f24e9ea132e23dae547, type: 3}
       propertyPath: defaultWalkableData
       value: 
       objectReference: {fileID: 11400000, guid: c83a0ed3266f04447acde76464f21756, type: 2}
@@ -57620,10 +57624,11 @@ MonoBehaviour:
   landingTile: {fileID: 1635411801}
   startTile: {fileID: 2128219072}
   yOffsetAboveTile: 1
-  jumpDuration: 0.5
-  jumpArcHeight: 1.2
+  jumpFromShipDuration: 0.55
+  jumpFromShipArcHeight: 1.4
   delayBetweenJumps: 0.15
   walkSpeed: 4
+  stepJumpHeight: 0.4
 --- !u!4 &1410675642 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6683997371804544947, guid: 850a2b81b92317f4c9f5db743a85e775, type: 3}

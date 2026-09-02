@@ -14,8 +14,10 @@ public class PirateStackManager : MonoBehaviour
     [SerializeField] private BlockData defaultWalkableData;
     [SerializeField] private string tileLayerName = "Tile";
 
+    public float StepHeight => stepHeight;
     private bool isBusy = false;
     private BlockTile currentHoveredTile;
+
 
     private void Update()
     {
@@ -162,16 +164,18 @@ public class PirateStackManager : MonoBehaviour
         }
     }
 
-    private void MaintainStackPositions()
+    public void MaintainStackPositions()
     {
         for (int i = 0; i < stackedPirates.Count; i++)
         {
-            if (stackedPirates[i] != null)
-            {
-                Vector3 targetPos = transform.position + new Vector3(0, (i + 1) * stepHeight, 0);
-                stackedPirates[i].transform.position = targetPos;
-                stackedPirates[i].transform.rotation = transform.rotation;
-            }
+            if (stackedPirates[i] == null) continue;
+
+            // Calcula a posição Y correta com base estritamente na posição do Líder no chão
+            Vector3 targetPos = transform.position + Vector3.up * ((i + 1) * stepHeight);
+
+            // Se você utiliza o Juice/Sway, aplique o offset de balanço na posição X/Z, sem alterar a base Y
+            stackedPirates[i].transform.position = targetPos;
+            stackedPirates[i].transform.rotation = transform.rotation;
         }
     }
 
@@ -483,13 +487,31 @@ public class PirateStackManager : MonoBehaviour
     {
         if (pirate == null) return;
 
+        // Remove colisões e ajusta layer
         Collider col = pirate.GetComponent<Collider>();
         if (col != null) col.enabled = false;
 
         pirate.tag = "Untagged";
         SetLayerRecursively(pirate, LayerMask.NameToLayer("Default"));
 
-        stackedPirates.Add(pirate);
+        // Interrompe qualquer animação de flutuação/juices residuais
+        PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();
+        if (juice != null)
+        {
+            juice.StopFloating();
+            juice.StopSway();
+        }
+
+        if (!stackedPirates.Contains(pirate))
+        {
+            stackedPirates.Add(pirate);
+        }
+
+        // Trava imediatamente na altura exata da pilha
+        int index = stackedPirates.IndexOf(pirate);
+        pirate.transform.position = transform.position + Vector3.up * ((index + 1) * stepHeight);
+        pirate.transform.rotation = transform.rotation;
+
         TriggerStackImpact(topToBottom: true);
     }
 }

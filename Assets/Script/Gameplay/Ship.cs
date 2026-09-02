@@ -19,15 +19,16 @@ public class Ship : MonoBehaviour
     [SerializeField] private GameObject[] extraPirateInstances; // Os outros 2 piratas
 
     [Header("Referências de Chão (Tiles)")]
-    [SerializeField] private Transform landingTile;              // Arraste o bloco de chão onde eles vão pousar
-    [SerializeField] private Transform startTile;                // Arraste o bloco de chão onde a fase começa
+    [SerializeField] private Transform landingTile;              // Bloco de chão onde eles pousam ao pular do navio
+    [SerializeField] private Transform startTile;                // Bloco de chão onde a fase realmente começa
     [SerializeField] private float yOffsetAboveTile = 1.0f;       // Altura acima do bloco para o pirata pisar
 
     [Header("Configurações de Animação")]
-    [SerializeField] private float jumpDuration = 0.55f;
-    [SerializeField] private float jumpArcHeight = 1.4f;
+    [SerializeField] private float jumpFromShipDuration = 0.55f;
+    [SerializeField] private float jumpFromShipArcHeight = 1.4f;
     [SerializeField] private float delayBetweenJumps = 0.15f;
-    [SerializeField] private float walkSpeed = 4f;
+    [SerializeField] private float walkSpeed = 5f;
+    [SerializeField] private float stepJumpHeight = 0.4f;        // Altura do pulo tile a tile
 
     private Vector3 basePosition;
     private Quaternion baseRotation;
@@ -52,7 +53,7 @@ public class Ship : MonoBehaviour
         // 1. Posiciona os piratas nos pontos do navio
         PositionPiratesOnShip();
 
-        // 2. Inicia o desembarque direto para os blocos referenciados
+        // 2. Inicia a sequência de montagem e desembarque
         StartCoroutine(PirateLandingSequence());
     }
 
@@ -80,6 +81,7 @@ public class Ship : MonoBehaviour
 
     private void PositionPiratesOnShip()
     {
+        // Posiciona o Líder no Ponto 0
         if (shipSpawnPoints.Length > 0 && playerInstance != null)
         {
             playerInstance.transform.position = shipSpawnPoints[0].position;
@@ -87,20 +89,24 @@ public class Ship : MonoBehaviour
             playerInstance.transform.SetParent(transform);
         }
 
+        // Posiciona os Piratas Extras nos Pontos 1, 2, etc.
         for (int i = 0; i < extraPirateInstances.Length; i++)
         {
             if (i + 1 < shipSpawnPoints.Length && extraPirateInstances[i] != null)
             {
-                extraPirateInstances[i].transform.position = shipSpawnPoints[i + 1].position;
-                extraPirateInstances[i].transform.rotation = shipSpawnPoints[i + 1].rotation;
-                extraPirateInstances[i].transform.SetParent(transform);
+                Transform spawnPoint = shipSpawnPoints[i + 1];
+                GameObject extraPirate = extraPirateInstances[i];
+
+                extraPirate.transform.SetParent(transform); // Garante parentesco com o navio
+                extraPirate.transform.position = spawnPoint.position;
+                extraPirate.transform.rotation = spawnPoint.rotation;
             }
         }
     }
 
     private IEnumerator PirateLandingSequence()
     {
-        yield return null; // Aguarda a inicialização dos objetos
+        yield return null; // Aguarda a inicialização completa do GridManager
 
         if (landingTile == null)
         {
@@ -108,71 +114,117 @@ public class Ship : MonoBehaviour
             yield break;
         }
 
-        // Posição exata 1 unidade (ou offset ajustável) acima do bloco de aterrisagem
         Vector3 landingWorldPos = landingTile.position + Vector3.up * yOffsetAboveTile;
+        PirateStackManager stackManager = playerInstance != null ? playerInstance.GetComponent<PirateStackManager>() : null;
 
-        List<GameObject> allPirates = new List<GameObject> { playerInstance };
-        allPirates.AddRange(extraPirateInstances);
+        // 1. MONTAGEM DA PILHA AINDA NO NAVIO
+        if (stackManager != null && extraPirateInstances != null)
+        {
+            float stepH = stackManager.StepHeight;
 
-        // Desparenta todos do navio
-        foreach (var pirate in allPirates)
+            for (int i = 0; i < extraPirateInstances.Length; i++)
+            {
+                GameObject extraPirate = extraPirateInstances[i];
+                if (extraPirate == null) continue;
+
+                // Cada pirata pula para o topo da pilha no barco
+                yield return StartCoroutine(JumpPirateToStackOnShip(extraPirate, i + 1, stepH));
+                yield return new WaitForSeconds(delayBetweenJumps);
+            }
+        }
+
+        yield return new WaitForSeconds(0.2f); // Pequena pausa dramática com a torre pronta no barco
+
+        // Desparenta todos do navio para moverem livremente no mundo
+        if (playerInstance != null) playerInstance.transform.SetParent(null);
+        foreach (var pirate in extraPirateInstances)
         {
             if (pirate != null) pirate.transform.SetParent(null);
         }
 
-        // 1. Pulo de cada pirata para cima do Landing Tile
-        for (int i = 0; i < allPirates.Count; i++)
+        // 2. PULO DA TORRE INTEIRA DO NAVIO PARA O LANDING TILE
+        if (playerInstance != null)
         {
-            GameObject pirate = allPirates[i];
-            if (pirate == null) continue;
+            yield return StartCoroutine(JumpPirateToGrid(playerInstance, landingWorldPos));
 
-            StartCoroutine(JumpPirateToGrid(pirate, landingWorldPos));
-            yield return new WaitForSeconds(delayBetweenJumps);
+            // Impacto de pouso de toda a torre no chão
+            if (stackManager != null)
+            {
+                stackManager.TriggerStackImpact(topToBottom: true);
+            }
         }
 
-        yield return new WaitForSeconds(jumpDuration);
-
-        // 2. Se houver um Start Tile configurado e diferente do Landing Tile, eles caminham até ele
+        // 3. CAMINHADA TILE A TILE ATÉ O START TILE
         if (startTile != null && startTile != landingTile)
         {
-            Vector3Int startGridCoord = Vector3Int.RoundToInt(landingTile.position);
-            Vector3Int targetGridCoord = Vector3Int.RoundToInt(startTile.position);
+            Vector3Int startStandGridPos = GetStandGridPosition(landingTile);
+            Vector3Int targetStandGridPos = GetStandGridPosition(startTile);
 
             List<Vector3Int> gridPath = null;
             if (GridManager.Instance != null)
             {
-                gridPath = GridManager.Instance.FindPath(startGridCoord, targetGridCoord);
+                gridPath = GridManager.Instance.FindPath(startStandGridPos, targetStandGridPos);
             }
 
             if (gridPath != null && gridPath.Count > 0)
             {
-                yield return StartCoroutine(WalkPiratesToStart(gridPath));
+                yield return StartCoroutine(WalkPiratesToStartAlongPath(gridPath));
             }
             else
             {
-                // Caminhada direta simples caso não use/ache pathfinding
-                Vector3 startWorldPos = startTile.position + Vector3.up * yOffsetAboveTile;
-                yield return StartCoroutine(WalkDirectToStart(startWorldPos));
+                Debug.LogWarning("GridManager não encontrou um caminho entre o LandingTile e o StartTile.");
             }
         }
+    }
 
-        // 3. Monta a pilha inicial
-        AssembleStartingStack();
+    private IEnumerator JumpPirateToStackOnShip(GameObject pirate, int stackIndex, float stepHeight)
+    {
+        Vector3 startPos = pirate.transform.position;
+        float elapsed = 0f;
+
+        while (elapsed < jumpFromShipDuration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / jumpFromShipDuration;
+
+            // Target acompanha a posição do líder no barco (mesmo flutuando)
+            Vector3 targetPos = playerInstance.transform.position + Vector3.up * (stackIndex * stepHeight);
+
+            Vector3 currentPos = Vector3.Lerp(startPos, targetPos, progress);
+            currentPos.y += Mathf.Sin(progress * Mathf.PI) * jumpFromShipArcHeight;
+
+            pirate.transform.position = currentPos;
+
+            Vector3 lookDir = (targetPos - startPos);
+            lookDir.y = 0;
+            if (lookDir != Vector3.zero)
+            {
+                pirate.transform.rotation = Quaternion.LookRotation(lookDir);
+            }
+
+            yield return null;
+        }
+
+        // Encaixa oficialmente na pilha ao aterrissar no barco
+        PirateStackManager stackManager = playerInstance.GetComponent<PirateStackManager>();
+        if (stackManager != null)
+        {
+            stackManager.AddToStackDirectly(pirate);
+        }
     }
 
     private IEnumerator JumpPirateToGrid(GameObject pirate, Vector3 targetPos)
     {
         Vector3 startPos = pirate.transform.position;
-        PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();
         float elapsed = 0f;
 
-        while (elapsed < jumpDuration)
+        while (elapsed < jumpFromShipDuration)
         {
             elapsed += Time.deltaTime;
-            float progress = elapsed / jumpDuration;
+            float progress = elapsed / jumpFromShipDuration;
 
             Vector3 currentPos = Vector3.Lerp(startPos, targetPos, progress);
-            currentPos.y += Mathf.Sin(progress * Mathf.PI) * jumpArcHeight;
+            currentPos.y += Mathf.Sin(progress * Mathf.PI) * jumpFromShipArcHeight;
 
             pirate.transform.position = currentPos;
 
@@ -187,26 +239,24 @@ public class Ship : MonoBehaviour
         }
 
         pirate.transform.position = targetPos;
-
-        if (juice != null)
-        {
-            juice.TriggerDropSquash();
-        }
     }
 
-    private IEnumerator WalkPiratesToStart(List<Vector3Int> path)
+    private IEnumerator WalkPiratesToStartAlongPath(List<Vector3Int> path)
     {
-        PirateJuice leaderJuice = playerInstance.GetComponentInChildren<PirateJuice>();
+        PirateStackManager stackManager = playerInstance.GetComponent<PirateStackManager>();
 
         foreach (Vector3Int step in path)
         {
-            Vector3 targetWorldPos = new Vector3(step.x, step.y + yOffsetAboveTile, step.z);
             Vector3 startPos = playerInstance.transform.position;
+            Vector3 targetWorldPos = new Vector3(step.x, step.y, step.z);
 
             Vector3 moveDir = (targetWorldPos - startPos);
             moveDir.y = 0;
 
-            if (leaderJuice != null) leaderJuice.TriggerStepSway(0f, 0.8f);
+            if (moveDir.sqrMagnitude > 0.001f)
+            {
+                playerInstance.transform.rotation = Quaternion.LookRotation(moveDir);
+            }
 
             float distance = Vector3.Distance(startPos, targetWorldPos);
             float stepDuration = Mathf.Max(0.1f, distance / walkSpeed);
@@ -217,90 +267,33 @@ public class Ship : MonoBehaviour
                 elapsed += Time.deltaTime;
                 float progress = elapsed / stepDuration;
 
+                // Arco de pulo tile a tile
                 Vector3 currentPos = Vector3.Lerp(startPos, targetWorldPos, progress);
-                currentPos.y += Mathf.Sin(progress * Mathf.PI) * 0.15f;
+                currentPos.y += Mathf.Sin(progress * Mathf.PI) * stepJumpHeight;
 
                 playerInstance.transform.position = currentPos;
-
-                if (moveDir.sqrMagnitude > 0.001f)
-                {
-                    playerInstance.transform.rotation = Quaternion.LookRotation(moveDir);
-                }
-
-                // Piratas extras acompanham
-                for (int i = 0; i < extraPirateInstances.Length; i++)
-                {
-                    if (extraPirateInstances[i] != null)
-                    {
-                        extraPirateInstances[i].transform.position = currentPos;
-                        extraPirateInstances[i].transform.rotation = playerInstance.transform.rotation;
-                    }
-                }
 
                 yield return null;
             }
 
             playerInstance.transform.position = targetWorldPos;
-        }
 
-        if (leaderJuice != null) leaderJuice.StopSway();
+            // Dispara o Juice completo de toda a pilha a cada passo
+            if (stackManager != null)
+            {
+                stackManager.OnPlayerStep();
+            }
+        }
     }
 
-    private IEnumerator WalkDirectToStart(Vector3 targetWorldPos)
+    private Vector3Int GetStandGridPosition(Transform tileTransform)
     {
-        PirateJuice leaderJuice = playerInstance.GetComponentInChildren<PirateJuice>();
-        Vector3 startPos = playerInstance.transform.position;
-
-        Vector3 moveDir = (targetWorldPos - startPos);
-        moveDir.y = 0;
-
-        float distance = Vector3.Distance(startPos, targetWorldPos);
-        float duration = distance / walkSpeed;
-        float elapsed = 0f;
-
-        while (elapsed < duration)
+        BlockTile blockTile = tileTransform.GetComponent<BlockTile>();
+        if (blockTile != null)
         {
-            elapsed += Time.deltaTime;
-            float progress = elapsed / duration;
-
-            Vector3 currentPos = Vector3.Lerp(startPos, targetWorldPos, progress);
-            playerInstance.transform.position = currentPos;
-
-            if (moveDir.sqrMagnitude > 0.001f)
-            {
-                playerInstance.transform.rotation = Quaternion.LookRotation(moveDir);
-            }
-
-            for (int i = 0; i < extraPirateInstances.Length; i++)
-            {
-                if (extraPirateInstances[i] != null)
-                {
-                    extraPirateInstances[i].transform.position = currentPos;
-                    extraPirateInstances[i].transform.rotation = playerInstance.transform.rotation;
-                }
-            }
-
-            yield return null;
+            return blockTile.gridPosition + Vector3Int.up;
         }
 
-        playerInstance.transform.position = targetWorldPos;
-        if (leaderJuice != null) leaderJuice.StopSway();
-    }
-
-    private void AssembleStartingStack()
-    {
-        if (playerInstance == null) return;
-
-        PirateStackManager stackManager = playerInstance.GetComponent<PirateStackManager>();
-        if (stackManager != null)
-        {
-            foreach (GameObject extraPirate in extraPirateInstances)
-            {
-                if (extraPirate != null)
-                {
-                    stackManager.AddToStackDirectly(extraPirate);
-                }
-            }
-        }
+        return Vector3Int.RoundToInt(tileTransform.position) + Vector3Int.up;
     }
 }
