@@ -170,10 +170,8 @@ public class PirateStackManager : MonoBehaviour
         {
             if (stackedPirates[i] == null) continue;
 
-            // Calcula a posição Y correta com base estritamente na posição do Líder no chão
             Vector3 targetPos = transform.position + Vector3.up * ((i + 1) * stepHeight);
 
-            // Se você utiliza o Juice/Sway, aplique o offset de balanço na posição X/Z, sem alterar a base Y
             stackedPirates[i].transform.position = targetPos;
             stackedPirates[i].transform.rotation = transform.rotation;
         }
@@ -487,14 +485,12 @@ public class PirateStackManager : MonoBehaviour
     {
         if (pirate == null) return;
 
-        // Remove colisões e ajusta layer
         Collider col = pirate.GetComponent<Collider>();
         if (col != null) col.enabled = false;
 
         pirate.tag = "Untagged";
         SetLayerRecursively(pirate, LayerMask.NameToLayer("Default"));
 
-        // Interrompe qualquer animação de flutuação/juices residuais
         PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();
         if (juice != null)
         {
@@ -507,7 +503,6 @@ public class PirateStackManager : MonoBehaviour
             stackedPirates.Add(pirate);
         }
 
-        // Trava imediatamente na altura exata da pilha
         int index = stackedPirates.IndexOf(pirate);
         pirate.transform.position = transform.position + Vector3.up * ((index + 1) * stepHeight);
         pirate.transform.rotation = transform.rotation;

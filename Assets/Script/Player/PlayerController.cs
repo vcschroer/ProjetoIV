@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.EventSystems; // Necessário para verificar interações com a UI
+using UnityEngine.EventSystems; 
 
 public class PlayerController : MonoBehaviour
 {
@@ -15,14 +15,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private ParticleSystem dustParticles;
 
     private bool isMoving = false;
-    private bool isInputLocked = false; // Trava para cutscenes / animações
+    private bool isInputLocked = false;
 
     private void Update()
     {
-        // Se estiver se movendo OU se o controle estiver travado por cutscene, ignora cliques
         if (isMoving || isInputLocked) return;
 
-        // TRAVA DE UI: Se o mapa do tesouro estiver expandido ou o cursor estiver sobre a UI, ignora cliques
         if ((TreasureMapUI.Instance != null && TreasureMapUI.Instance.IsExpanded) ||
             (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()))
         {
@@ -35,9 +33,7 @@ public class PlayerController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Permite bloquear ou liberar o controle do jogador externamente (ex: cutscenes do navio).
-    /// </summary>
+
     public void SetInputLock(bool locked)
     {
         isInputLocked = locked;
