@@ -43,9 +43,7 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    // ========================================================================
-    // ATUALIZAÇÃO DINÂMICA DO GRID
-    // ========================================================================
+
 
     public void AddTile(BlockTile tile)
     {
@@ -101,9 +99,7 @@ public class GridManager : MonoBehaviour
         return tile;
     }
 
-    // ========================================================================
-    // CAMINHO DO MAPA DO TESOURO (Sem trava de altura)
-    // ========================================================================
+
 
     public List<Vector3Int> Find2DPathWithHeightLimit(Vector2Int startXZ, Vector2Int targetXZ, int maxStepHeight = 1)
     {
@@ -135,7 +131,6 @@ public class GridManager : MonoBehaviour
 
                 if (cameFrom.ContainsKey(next)) continue;
 
-                // Agora apenas verifica se existe uma coluna de bloco na posição 2D, ignorando a diferença de altura
                 if (columnTopY.ContainsKey(next))
                 {
                     frontier.Enqueue(next);
@@ -181,9 +176,6 @@ public class GridManager : MonoBehaviour
         return nearest;
     }
 
-    // ========================================================================
-    // CAMINHO 3D DO JOGADOR / PIRATAS
-    // ========================================================================
 
     public List<Vector3Int> FindPath(Vector3Int start, Vector3Int target, int currentStackCount = 0)
     {

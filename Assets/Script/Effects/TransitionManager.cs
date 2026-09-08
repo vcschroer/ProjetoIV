@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -8,29 +7,48 @@ public class TransitionManager : MonoBehaviour
 {
     public static TransitionManager Instance { get; private set; }
 
-    [Header("Referências UI")]
-    [SerializeField] private Image imagemTransicao;
+    [Header("Referências da Transição")]
+    [Tooltip("O GameObject pai que cobre a tela inteira (com a cor preta e o componente Mask).")]
+    [SerializeField] private GameObject painelPretoTransicao;
 
-    [Header("Configurações")]
-    [SerializeField] private float duracaoAnimacao = 0.5f;
+    [Tooltip("O RectTransform da imagem que contém o sprite do chapéu (filho do painel).")]
+    [SerializeField] private RectTransform imagemChapeu;
 
-    [SerializeField] private List<Sprite> spritesTransicao;
+    [Header("Configurações da Animação")]
+    [SerializeField] private float duracaoAnimacao = 0.8f;
+    [SerializeField] private float escalaMaxima = 15f; // Tamanho suficiente para cobrir a tela inteira
 
     private Canvas canvas;
     private bool estaOcorrendoTransicao = false;
 
     private void Awake()
     {
+        Debug.Log("[TransitionManager] Awake iniciado.");
+
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(transform.root.gameObject);
 
-            canvas = GetComponentInParent<Canvas>();
-            if (canvas != null) canvas.sortingOrder = 999;
+            // Configura o Canvas pai para ficar na camada mais alta
+            canvas = GetComponentInChildren<Canvas>();
+            if (canvas == null)
+                canvas = GetComponentInParent<Canvas>();
+
+            if (canvas != null)
+            {
+                canvas.overrideSorting = true;
+                canvas.sortingOrder = 999;
+                Debug.Log("[TransitionManager] Canvas configurado com SortingOrder = 999.");
+            }
+            else
+            {
+                Debug.LogWarning("[TransitionManager] Nenhum Canvas encontrado para a transição!");
+            }
         }
         else if (Instance != this)
         {
+            Debug.Log("[TransitionManager] Instância duplicada encontrada e destruída.");
             Destroy(transform.root.gameObject);
             enabled = false;
             return;
@@ -42,75 +60,91 @@ public class TransitionManager : MonoBehaviour
         if (Instance != this) return;
 
         string nomeCenaAtual = SceneManager.GetActiveScene().name;
+        Debug.Log($"[TransitionManager] Start executado na cena: '{nomeCenaAtual}'");
 
         if (nomeCenaAtual != "Menu")
         {
-            imagemTransicao.enabled = true;
+            Debug.Log("[TransitionManager] Cena diferente de 'Menu'. Iniciando transição de entrada...");
+            if (painelPretoTransicao != null) painelPretoTransicao.SetActive(true);
             StartCoroutine(RotinaEntrada());
         }
         else
         {
-            imagemTransicao.enabled = false;
+            Debug.Log("[TransitionManager] Cena é 'Menu'. Desativando painel de transição.");
+            if (painelPretoTransicao != null) painelPretoTransicao.SetActive(false);
         }
     }
 
     public void CarregarCena(string nomeDaCena)
     {
-        if (estaOcorrendoTransicao) return;
+        Debug.Log($"[TransitionManager] Chamada para CarregarCena('{nomeDaCena}').");
+
+        if (estaOcorrendoTransicao)
+        {
+            Debug.LogWarning("[TransitionManager] Bloqueado: Já existe uma transição em andamento!");
+            return;
+        }
+
         StartCoroutine(RotinaMudarCena(nomeDaCena));
     }
-
 
     private IEnumerator RotinaMudarCena(string nomeDaCena)
     {
         estaOcorrendoTransicao = true;
+        Debug.Log("[TransitionManager] Iniciando animação de saída (Fechando a tela)...");
 
-        yield return StartCoroutine(TocarAnimacao(reverso: false));
+        // Fechar a tela: vai do tamanho máximo até zero
+        yield return StartCoroutine(TocarAnimacaoEscala(escalaMaxima, 0f));
 
+        Debug.Log($"[TransitionManager] Tela fechada. Carregando a cena assincronamente: '{nomeDaCena}'...");
         AsyncOperation operacaoAsync = SceneManager.LoadSceneAsync(nomeDaCena);
+
         while (!operacaoAsync.isDone)
         {
             yield return null;
         }
 
+        Debug.Log($"[TransitionManager] Cena '{nomeDaCena}' carregada com sucesso. Iniciando transição de entrada...");
         yield return StartCoroutine(RotinaEntrada());
 
         estaOcorrendoTransicao = false;
+        Debug.Log("[TransitionManager] Troca de cena finalizada.");
     }
 
     private IEnumerator RotinaEntrada()
     {
-        yield return StartCoroutine(TocarAnimacao(reverso: true));
+        Debug.Log("[TransitionManager] Executando RotinaEntrada (Abrindo a tela)...");
+        if (painelPretoTransicao != null) painelPretoTransicao.SetActive(true);
 
-        imagemTransicao.enabled = false;
+        // Abrir a tela: vai de zero até o tamanho máximo
+        yield return StartCoroutine(TocarAnimacaoEscala(0f, escalaMaxima));
+
+        if (painelPretoTransicao != null) painelPretoTransicao.SetActive(false);
+        Debug.Log("[TransitionManager] Tela totalmente aberta. Painel desativado.");
     }
 
-    private IEnumerator TocarAnimacao(bool reverso)
+    private IEnumerator TocarAnimacaoEscala(float escalaInicial, float escalaFinal)
     {
-
-        imagemTransicao.enabled = true;
-        int totalFrames = spritesTransicao.Count;
-        float tempoPorFrame = duracaoAnimacao / totalFrames;
-        float tempoDecorrido = 0f;
-        int indexFrameAtual = 0;
-
-        while (indexFrameAtual < totalFrames)
+        if (imagemChapeu == null)
         {
-            indexFrameAtual = Mathf.FloorToInt(tempoDecorrido / tempoPorFrame);
+            Debug.LogError("[TransitionManager] ERRO CRÍTICO: 'imagemChapeu' não está atribuída no Inspector!");
+            yield break;
+        }
 
-            if (indexFrameAtual < totalFrames)
-            {
-                int indexFinal = reverso ? (totalFrames - 1) - indexFrameAtual : indexFrameAtual;
-                indexFinal = Mathf.Clamp(indexFinal, 0, totalFrames - 1);
+        float tempoDecorrido = 0f;
 
-                imagemTransicao.sprite = spritesTransicao[indexFinal];
-            }
+        while (tempoDecorrido < duracaoAnimacao)
+        {
+            tempoDecorrido += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(tempoDecorrido / duracaoAnimacao);
+            float smoothT = Mathf.SmoothStep(0f, 1f, t);
 
-            tempoDecorrido += Time.deltaTime;
+            float escalaAtual = Mathf.Lerp(escalaInicial, escalaFinal, smoothT);
+            imagemChapeu.localScale = new Vector3(escalaAtual, escalaAtual, 1f);
+
             yield return null;
         }
 
-        int indexUltimo = reverso ? 0 : totalFrames - 1;
-        imagemTransicao.sprite = spritesTransicao[indexUltimo];
+        imagemChapeu.localScale = new Vector3(escalaFinal, escalaFinal, 1f);
     }
 }

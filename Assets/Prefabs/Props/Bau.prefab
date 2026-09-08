@@ -78,12 +78,36 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fc3eec942a200fd409db2be039f29a75, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChestController
-  idleFloatSpeed: 1.5
-  idleFloatAmplitude: 0.08
-  idleSpinSpeed: 0
+  requiresKey: 1
+  hasKey: 0
+  consumeKeyOnUse: 1
+  startsFullyBuried: 1
+  fullyBuriedYOffset: -2.5
+  revealDistance: 5.35
+  revealSpeed: 2
+  startsBuried: 1
+  buriedYOffset: -0.8
+  buriedTiltOffset: {x: -20, y: 0, z: 10}
+  pryTiltOffset: {x: 15, y: 0, z: -5}
+  digAreaSize: {x: 2.5, y: 1.5, z: 2.5}
+  digAreaOffset: {x: 0, y: 0, z: 0}
+  digDelay: 0
+  digDuration: 0.5
+  digParticles: {fileID: 7989733190726987858, guid: 6d0fcb3fd25f0ac41b064b4e48ebd8e2, type: 3}
+  dustParticlePrefabs:
+  - {fileID: 1162221763184475028, guid: 6d0fcb3fd25f0ac41b064b4e48ebd8e2, type: 3}
+  revealDustParticleCount: 8
+  digDustParticleCount: 12
+  dustSpawnRadius: 1
+  dustMinHeight: -0.15
+  dustMaxHeight: 0
+  dustLifetime: 0.5
   idleSpinAxis: {x: 0, y: 1, z: 0}
   openSpinAxis: {x: 0, y: 1, z: 0}
   postSpinAxis: {x: 0, y: 1, z: 0}
+  idleFloatSpeed: 1.5
+  idleFloatAmplitude: 0.08
+  idleSpinSpeed: 0
   jumpHeight: 1.5
   jumpDuration: 0.8
   totalSpins: 1
@@ -100,9 +124,11 @@ MonoBehaviour:
   maxSpawnDistance: 2
   minSpawnHeight: 1
   maxSpawnHeight: 2
-  sparkleParticles: {fileID: 0}
+  sparkleParticles: {fileID: 8607069174683633839, guid: 47c3d0771f9258b479ba32d01a823765, type: 3}
   maxInteractionDistance: 2.5
   playerTransform: {fileID: 0}
+  nomeCenaDestino: Menu
+  delayAntesTransicao: 0.2
 --- !u!1001 &8228699181303702668
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -114,6 +140,10 @@ PrefabInstance:
     - target: {fileID: 6532625474870085665, guid: 07a977963523b3b4dbcaa27119f6b469, type: 3}
       propertyPath: m_Name
       value: Area_star_ellow
+      objectReference: {fileID: 0}
+    - target: {fileID: 6532625474870085665, guid: 07a977963523b3b4dbcaa27119f6b469, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 6532625474870085666, guid: 07a977963523b3b4dbcaa27119f6b469, type: 3}
       propertyPath: m_LocalScale.x

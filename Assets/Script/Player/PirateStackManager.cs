@@ -15,9 +15,16 @@ public class PirateStackManager : MonoBehaviour
     [SerializeField] private string tileLayerName = "Tile";
 
     public float StepHeight => stepHeight;
+    public bool IsBusy => isBusy;
+
     private bool isBusy = false;
     private BlockTile currentHoveredTile;
+    private CrateStackManager crateStackManager;
 
+    private void Awake()
+    {
+        crateStackManager = GetComponent<CrateStackManager>();
+    }
 
     private void Update()
     {
@@ -29,7 +36,7 @@ public class PirateStackManager : MonoBehaviour
 
         UpdateCursorState();
 
-        if (isBusy) return;
+        if (isBusy || (crateStackManager != null && crateStackManager.IsBusy)) return;
 
         if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
         {
@@ -45,6 +52,144 @@ public class PirateStackManager : MonoBehaviour
         }
     }
 
+    private bool IsPlayerStandingOn(GameObject obj)
+    {
+        if (obj == null) return false;
+        Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
+        Vector3Int objPos = Vector3Int.RoundToInt(obj.transform.position);
+        return (playerPos.x == objPos.x && playerPos.z == objPos.z);
+    }
+
+    public GameObject GetDroppedPirateRoot(GameObject hitObject)
+    {
+        if (hitObject == null) return null;
+
+        Transform current = hitObject.transform;
+        while (current != null)
+        {
+            if (current.CompareTag("DroppedPirate"))
+            {
+                GameObject pirateObj = current.gameObject;
+                if (stackedPirates.Contains(pirateObj)) return null;
+                return pirateObj;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
+    private GameObject GetAnyDroppedRoot(GameObject hitObject)
+    {
+        if (hitObject == null) return null;
+
+        Transform current = hitObject.transform;
+        while (current != null)
+        {
+            if (current.CompareTag("DroppedPirate") || current.CompareTag("DroppedCrate"))
+            {
+                GameObject obj = current.gameObject;
+                if (stackedPirates.Contains(obj)) return null;
+                return obj;
+            }
+            current = current.parent;
+        }
+        return null;
+    }
+
+    private Vector3Int CalculateDropGridPos(BlockTile targetTile, out bool isWaterDrop)
+    {
+        Vector3Int tileGridPos = Vector3Int.RoundToInt(targetTile.transform.position);
+
+        if (targetTile.isWaterTile)
+        {
+            Collider[] collidersInWater = Physics.OverlapSphere(new Vector3(tileGridPos.x, tileGridPos.y + 0.5f, tileGridPos.z), 0.35f);
+            bool objectInWater = false;
+            foreach (var col in collidersInWater)
+            {
+                if (GetAnyDroppedRoot(col.gameObject) != null)
+                {
+                    objectInWater = true;
+                    break;
+                }
+            }
+
+            if (!objectInWater)
+            {
+                isWaterDrop = true;
+                return tileGridPos;
+            }
+            else
+            {
+                isWaterDrop = false;
+                int height = GetColumnStackHeight(tileGridPos);
+                return new Vector3Int(tileGridPos.x, tileGridPos.y + height, tileGridPos.z);
+            }
+        }
+        else
+        {
+            isWaterDrop = false;
+            int height = GetColumnStackHeight(tileGridPos + Vector3Int.up);
+            return new Vector3Int(tileGridPos.x, tileGridPos.y + 1 + height, tileGridPos.z);
+        }
+    }
+
+    private int GetColumnStackHeight(Vector3Int baseGridPos)
+    {
+        int height = 0;
+        HashSet<GameObject> countedObjects = new HashSet<GameObject>();
+
+        while (height < 20)
+        {
+            Vector3 checkCenter = new Vector3(baseGridPos.x, baseGridPos.y + height + 0.5f, baseGridPos.z);
+            Collider[] colliders = Physics.OverlapSphere(checkCenter, 0.25f);
+
+            GameObject newObjectFound = null;
+            foreach (var col in colliders)
+            {
+                GameObject root = GetAnyDroppedRoot(col.gameObject);
+                if (root != null && !countedObjects.Contains(root))
+                {
+                    newObjectFound = root;
+                    break;
+                }
+            }
+
+            if (newObjectFound != null)
+            {
+                countedObjects.Add(newObjectFound);
+                height++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        return height;
+    }
+
+    public bool CanPickupPirate(GameObject targetPirate)
+    {
+        if (targetPirate == null || stackedPirates.Contains(targetPirate)) return false;
+        if (IsPlayerStandingOn(targetPirate)) return false;
+
+        PirateIdentity identity = targetPirate.GetComponent<PirateIdentity>();
+        if (identity != null)
+        {
+            int expectedID = stackedPirates.Count + 1;
+            if (identity.pirateID != expectedID) return false;
+        }
+
+        Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
+        Vector3Int piratePos = Vector3Int.RoundToInt(targetPirate.transform.position);
+
+        int distanceX = Mathf.Abs(playerPos.x - piratePos.x);
+        int distanceZ = Mathf.Abs(playerPos.z - piratePos.z);
+        int distanceY = Mathf.Abs(playerPos.y - piratePos.y);
+
+        return (distanceX <= 1 && distanceZ <= 1 && distanceY <= 2);
+    }
+
     private void UpdateCursorState()
     {
         if (CursorManager.Instance == null || Mouse.current == null) return;
@@ -55,15 +200,25 @@ public class PirateStackManager : MonoBehaviour
         {
             GameObject hitObject = hit.collider.gameObject;
 
-            bool isDroppedPirate = hitObject.CompareTag("DroppedPirate") ||
-                                   (hitObject.transform.parent != null && hitObject.transform.parent.CompareTag("DroppedPirate"));
-
-            if (isDroppedPirate)
+            GameObject droppedPirate = GetDroppedPirateRoot(hitObject);
+            if (droppedPirate != null && CanPickupPirate(droppedPirate))
             {
-                BlockTile pirateTile = hitObject.GetComponentInParent<BlockTile>();
+                BlockTile pirateTile = droppedPirate.GetComponentInParent<BlockTile>();
                 UpdateTileHighlight(pirateTile);
                 CursorManager.Instance.SetCursorType(CursorState.PickupPirate);
                 return;
+            }
+
+            if (crateStackManager != null)
+            {
+                GameObject droppedCrate = crateStackManager.GetDroppedCrateRoot(hitObject);
+                if (droppedCrate != null && crateStackManager.CanPickupCrate(droppedCrate))
+                {
+                    BlockTile crateTile = droppedCrate.GetComponentInParent<BlockTile>();
+                    UpdateTileHighlight(crateTile);
+                    CursorManager.Instance.SetCursorType(CursorState.PickupPirate);
+                    return;
+                }
             }
 
             BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
@@ -71,12 +226,20 @@ public class PirateStackManager : MonoBehaviour
 
             if (clickedTile != null)
             {
-                if (clickedTile.isWaterTile)
+                Collider[] colliders = Physics.OverlapSphere(clickedTile.transform.position + Vector3.up * 0.5f, 0.5f);
+                foreach (Collider col in colliders)
                 {
-                    Collider[] collidersInWater = Physics.OverlapSphere(clickedTile.transform.position, 0.4f);
-                    foreach (Collider col in collidersInWater)
+                    GameObject pirateOnTile = GetDroppedPirateRoot(col.gameObject);
+                    if (pirateOnTile != null && CanPickupPirate(pirateOnTile))
                     {
-                        if (col.CompareTag("DroppedPirate") || (col.transform.parent != null && col.transform.parent.CompareTag("DroppedPirate")))
+                        CursorManager.Instance.SetCursorType(CursorState.PickupPirate);
+                        return;
+                    }
+
+                    if (crateStackManager != null)
+                    {
+                        GameObject crateOnTile = crateStackManager.GetDroppedCrateRoot(col.gameObject);
+                        if (crateOnTile != null && crateStackManager.CanPickupCrate(crateOnTile))
                         {
                             CursorManager.Instance.SetCursorType(CursorState.PickupPirate);
                             return;
@@ -84,8 +247,9 @@ public class PirateStackManager : MonoBehaviour
                     }
                 }
 
-                int currentTotalHeight = 1 + GetStackCount();
-                if (clickedTile.maxAllowedHeight > 0 && currentTotalHeight > clickedTile.maxAllowedHeight)
+                int totalCarriedCount = GetStackCount() + (crateStackManager != null ? crateStackManager.GetCrateCount() : 0);
+
+                if (clickedTile.maxAllowedHeight > 0 && (1 + totalCarriedCount) > clickedTile.maxAllowedHeight)
                 {
                     CursorManager.Instance.SetCursorType(CursorState.InvalidPlacement);
                     return;
@@ -98,9 +262,9 @@ public class PirateStackManager : MonoBehaviour
                 int distanceZ = Mathf.Abs(playerPos.z - groundGridPos.z);
                 int distanceY = Mathf.Abs(playerPos.y - groundGridPos.y);
 
-                bool isWithinRange = (distanceX <= 1 && distanceZ <= 1) && (distanceX > 0 || distanceZ > 0) && (distanceY <= 2);
+                bool isWithinRange = (distanceX <= 1 && distanceZ <= 1) && (distanceY <= 2);
 
-                if (isWithinRange && stackedPirates.Count > 0)
+                if (isWithinRange && totalCarriedCount > 0)
                 {
                     if (clickedTile.isWaterTile)
                     {
@@ -119,7 +283,8 @@ public class PirateStackManager : MonoBehaviour
                     }
                 }
 
-                if (clickedTile.data != null && clickedTile.data.isWalkable && !clickedTile.isWaterTile)
+                // PRIORIDADE 3: ANDAR
+                if (clickedTile.data != null && clickedTile.data.isWalkable)
                 {
                     CursorManager.Instance.SetCursorType(CursorState.WalkToTile);
                     return;
@@ -141,17 +306,9 @@ public class PirateStackManager : MonoBehaviour
     {
         if (currentHoveredTile != newTile)
         {
-            if (currentHoveredTile != null)
-            {
-                currentHoveredTile.SetHighlight(false);
-            }
-
+            if (currentHoveredTile != null) currentHoveredTile.SetHighlight(false);
             currentHoveredTile = newTile;
-
-            if (currentHoveredTile != null)
-            {
-                currentHoveredTile.SetHighlight(true);
-            }
+            if (currentHoveredTile != null) currentHoveredTile.SetHighlight(true);
         }
     }
 
@@ -169,9 +326,7 @@ public class PirateStackManager : MonoBehaviour
         for (int i = 0; i < stackedPirates.Count; i++)
         {
             if (stackedPirates[i] == null) continue;
-
             Vector3 targetPos = transform.position + Vector3.up * ((i + 1) * stepHeight);
-
             stackedPirates[i].transform.position = targetPos;
             stackedPirates[i].transform.rotation = transform.rotation;
         }
@@ -195,7 +350,6 @@ public class PirateStackManager : MonoBehaviour
                 {
                     float delay = (i + 1) * 0.035f;
                     float heightMultiplier = 1f + (i * 0.45f);
-
                     juice.TriggerBounce(delay);
                     juice.TriggerStepSway(delay, heightMultiplier);
                 }
@@ -229,81 +383,113 @@ public class PirateStackManager : MonoBehaviour
 
     private void HandleRightClick()
     {
+        if (Camera.main == null) return;
         Ray ray = Camera.main.ScreenPointToRay(Mouse.current.position.ReadValue());
 
         if (Physics.Raycast(ray, out RaycastHit hit, 100f))
         {
             GameObject hitObject = hit.collider.gameObject;
 
-            if (hitObject.CompareTag("DroppedPirate") || (hitObject.transform.parent != null && hitObject.transform.parent.CompareTag("DroppedPirate")))
-            {
-                GameObject rootPirate = hitObject.CompareTag("DroppedPirate") ? hitObject : hitObject.transform.parent.gameObject;
-                TryPickupPirate(rootPirate);
+            if (hitObject == gameObject || hitObject.transform.IsChildOf(transform))
                 return;
+
+            GameObject rootPirate = GetDroppedPirateRoot(hitObject);
+
+            if (rootPirate != null && !IsPlayerStandingOn(rootPirate))
+            {
+                bool pickedUp = TryPickupPirate(rootPirate);
+                if (pickedUp) return;
             }
 
             BlockTile clickedTile = hitObject.GetComponentInParent<BlockTile>();
             if (clickedTile != null)
             {
-                if (clickedTile.isWaterTile)
+                Collider[] collidersOnTile = Physics.OverlapSphere(clickedTile.transform.position + Vector3.up * 0.5f, 0.5f);
+                foreach (Collider col in collidersOnTile)
                 {
-                    Collider[] collidersInWater = Physics.OverlapSphere(clickedTile.transform.position, 0.4f);
-                    foreach (Collider col in collidersInWater)
+                    GameObject pirateOnTile = GetDroppedPirateRoot(col.gameObject);
+                    if (pirateOnTile != null && !IsPlayerStandingOn(pirateOnTile))
                     {
-                        if (col.CompareTag("DroppedPirate") || (col.transform.parent != null && col.transform.parent.CompareTag("DroppedPirate")))
-                        {
-                            GameObject rootPirate = col.CompareTag("DroppedPirate") ? col.gameObject : col.transform.parent.gameObject;
-                            TryPickupPirate(rootPirate);
-                            return;
-                        }
+                        bool pickedUp = TryPickupPirate(pirateOnTile);
+                        if (pickedUp) return;
                     }
                 }
 
-                TryDropPirate(clickedTile);
+                if (crateStackManager != null && crateStackManager.GetCrateCount() > 0 && stackedPirates.Count == 0)
+                {
+                    return;
+                }
+
+                if (stackedPirates.Count > 0)
+                {
+                    TryDropPirate(clickedTile);
+                }
             }
         }
     }
 
-    private void TryPickupPirate(GameObject targetPirate)
+    private bool TryPickupPirate(GameObject targetPirate)
     {
-        PirateIdentity identity = targetPirate.GetComponent<PirateIdentity>();
+        if (!CanPickupPirate(targetPirate)) return false;
 
-        if (identity != null)
-        {
-            int expectedID = stackedPirates.Count + 1;
-
-            if (identity.pirateID != expectedID)
-            {
-                return;
-            }
-        }
-
-        Vector3Int playerPos = Vector3Int.RoundToInt(transform.position);
-        Vector3Int piratePos = Vector3Int.RoundToInt(targetPirate.transform.position);
-
-        int distanceX = Mathf.Abs(playerPos.x - piratePos.x);
-        int distanceZ = Mathf.Abs(playerPos.z - piratePos.z);
-        int distanceY = Mathf.Abs(playerPos.y - piratePos.y);
-
-        if (distanceX <= 1 && distanceZ <= 1 && (distanceX > 0 || distanceZ > 0) && distanceY <= 2)
-        {
-            StartCoroutine(PickupRoutine(targetPirate));
-        }
+        StartCoroutine(PickupRoutine(targetPirate));
+        return true;
     }
 
     private IEnumerator PickupRoutine(GameObject pirate)
     {
+        if (stackedPirates.Contains(pirate)) yield break;
+
         isBusy = true;
 
         Vector3Int currentPirateGridPos = Vector3Int.RoundToInt(pirate.transform.position);
+
+        BlockTile tileScript = pirate.GetComponent<BlockTile>();
+        if (tileScript != null)
+        {
+            tileScript.SetHighlight(false);
+            tileScript.enabled = false;
+        }
+
         if (GridManager.Instance != null)
         {
-            BlockTile waterTile = GridManager.Instance.GetTileAt(currentPirateGridPos);
-            if (waterTile != null && waterTile.isWaterTile)
+            BlockTile tileAtPos = GridManager.Instance.GetTileAt(currentPirateGridPos);
+            Vector3Int waterGridPos = currentPirateGridPos;
+
+            if (tileAtPos == null || !tileAtPos.isWaterTile)
             {
-                if (waterTile.data != null)
+                Vector3Int posBelow = currentPirateGridPos + Vector3Int.down;
+                BlockTile tileBelow = GridManager.Instance.GetTileAt(posBelow);
+                if (tileBelow != null && tileBelow.isWaterTile)
                 {
-                    waterTile.data.isWalkable = false;
+                    tileAtPos = tileBelow;
+                    waterGridPos = posBelow;
+                }
+                else if (tileBelow != null && tileBelow.data != null && !tileBelow.isWaterTile)
+                {
+                    tileBelow.data = Instantiate(tileBelow.data);
+                    tileBelow.data.isWalkable = true;
+                }
+            }
+
+            if (tileAtPos != null && tileAtPos.isWaterTile)
+            {
+                bool objectRemainsInWater = false;
+                Collider[] colliders = Physics.OverlapSphere(new Vector3(waterGridPos.x, waterGridPos.y + 0.2f, waterGridPos.z), 0.35f);
+                foreach (var col in colliders)
+                {
+                    GameObject root = GetAnyDroppedRoot(col.gameObject);
+                    if (root != null && root != pirate)
+                    {
+                        objectRemainsInWater = true;
+                        break;
+                    }
+                }
+
+                if (!objectRemainsInWater && tileAtPos.data != null)
+                {
+                    tileAtPos.data = Instantiate(tileAtPos.data);
+                    tileAtPos.data.isWalkable = false;
                 }
             }
         }
@@ -315,20 +501,8 @@ public class PirateStackManager : MonoBehaviour
             juice.TriggerPickupStretch();
         }
 
-        BlockTile tileScript = pirate.GetComponent<BlockTile>();
-        if (tileScript != null)
-        {
-            tileScript.SetHighlight(false);
-            tileScript.enabled = false;
-        }
-
-        Collider col = pirate.GetComponent<Collider>();
-        if (col != null)
-        {
-            col.enabled = false;
-        }
-
-        pirate.tag = "Untagged";
+        SetCollidersEnabled(pirate, false);
+        SetTagRecursively(pirate, "Untagged");
         SetLayerRecursively(pirate, LayerMask.NameToLayer("Default"));
 
         Vector3 startPos = pirate.transform.position;
@@ -348,7 +522,10 @@ public class PirateStackManager : MonoBehaviour
             yield return null;
         }
 
-        stackedPirates.Add(pirate);
+        if (!stackedPirates.Contains(pirate))
+        {
+            stackedPirates.Add(pirate);
+        }
 
         TriggerStackImpact(topToBottom: true);
 
@@ -373,25 +550,22 @@ public class PirateStackManager : MonoBehaviour
 
         bool isWithinDropRange = (distanceX <= 1 && distanceZ <= 1) && (distanceX > 0 || distanceZ > 0) && (distanceY <= 2);
 
-        if (!isWithinDropRange)
-        {
-            return;
-        }
+        if (!isWithinDropRange) return;
 
         int topIndex = stackedPirates.Count - 1;
         GameObject pirateToDrop = stackedPirates[topIndex];
         stackedPirates.RemoveAt(topIndex);
 
-        StartCoroutine(DropRoutine(pirateToDrop, groundGridPos, isWater: targetTile.isWaterTile));
+        Vector3Int finalGridPos = CalculateDropGridPos(targetTile, out bool isWaterDrop);
+
+        StartCoroutine(DropRoutine(pirateToDrop, targetTile, finalGridPos, isWater: isWaterDrop));
     }
 
-    private IEnumerator DropRoutine(GameObject pirate, Vector3Int targetGridPos, bool isWater)
+    private IEnumerator DropRoutine(GameObject pirate, BlockTile targetTile, Vector3Int finalGridPos, bool isWater)
     {
         isBusy = true;
 
         Vector3 startPos = pirate.transform.position;
-
-        Vector3Int finalGridPos = isWater ? targetGridPos : new Vector3Int(targetGridPos.x, targetGridPos.y + 1, targetGridPos.z);
         Vector3 targetPos = new Vector3(finalGridPos.x, finalGridPos.y, finalGridPos.z);
 
         float time = 0;
@@ -412,7 +586,7 @@ public class PirateStackManager : MonoBehaviour
         pirate.transform.rotation = Quaternion.identity;
 
         PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();
-        pirate.tag = "DroppedPirate";
+        SetTagRecursively(pirate, "DroppedPirate");
 
         int tileLayerIndex = LayerMask.NameToLayer(tileLayerName);
         if (tileLayerIndex != -1)
@@ -420,13 +594,21 @@ public class PirateStackManager : MonoBehaviour
             SetLayerRecursively(pirate, tileLayerIndex);
         }
 
-        Collider col = pirate.GetComponent<Collider>();
-        if (col == null) col = pirate.AddComponent<BoxCollider>();
-        col.enabled = true;
+        SetCollidersEnabled(pirate, true);
+
+        BlockTile tile = pirate.GetComponent<BlockTile>();
+        if (tile == null) tile = pirate.AddComponent<BlockTile>();
+
+        tile.enabled = true;
+        if (tile.data == null) tile.data = defaultWalkableData != null ? Instantiate(defaultWalkableData) : ScriptableObject.CreateInstance<BlockData>();
+        else tile.data = Instantiate(tile.data);
+
+        tile.data.isWalkable = true;
+        tile.Setup(finalGridPos, tile.data);
 
         if (isWater)
         {
-            BlockTile waterTile = GridManager.Instance.GetTileAt(targetGridPos);
+            BlockTile waterTile = GridManager.Instance != null ? GridManager.Instance.GetTileAt(finalGridPos) : targetTile;
             if (waterTile != null && waterTile.data != null)
             {
                 waterTile.data = Instantiate(waterTile.data);
@@ -445,12 +627,10 @@ public class PirateStackManager : MonoBehaviour
                 juice.TriggerDropSquash();
             }
 
-            BlockTile tile = pirate.GetComponent<BlockTile>();
-            if (tile != null)
+            if (targetTile != null && targetTile.data != null && !targetTile.isWaterTile && targetTile != tile)
             {
-                tile.enabled = true;
-                if (tile.data == null) tile.data = defaultWalkableData;
-                tile.Setup(finalGridPos, tile.data);
+                targetTile.data = Instantiate(targetTile.data);
+                targetTile.data.isWalkable = false;
             }
         }
 
@@ -462,10 +642,7 @@ public class PirateStackManager : MonoBehaviour
         isBusy = false;
     }
 
-    public int GetStackCount()
-    {
-        return stackedPirates.Count;
-    }
+    public int GetStackCount() => stackedPirates.Count;
 
     private void SetLayerRecursively(GameObject obj, int newLayer)
     {
@@ -474,10 +651,28 @@ public class PirateStackManager : MonoBehaviour
 
         foreach (Transform child in obj.transform)
         {
-            if (child != null)
-            {
-                SetLayerRecursively(child.gameObject, newLayer);
-            }
+            if (child != null) SetLayerRecursively(child.gameObject, newLayer);
+        }
+    }
+
+    private void SetTagRecursively(GameObject obj, string newTag)
+    {
+        if (obj == null) return;
+        obj.tag = newTag;
+
+        foreach (Transform child in obj.transform)
+        {
+            if (child != null) SetTagRecursively(child.gameObject, newTag);
+        }
+    }
+
+    private void SetCollidersEnabled(GameObject obj, bool enabledState)
+    {
+        if (obj == null) return;
+        Collider[] colliders = obj.GetComponentsInChildren<Collider>(true);
+        foreach (Collider col in colliders)
+        {
+            col.enabled = enabledState;
         }
     }
 
@@ -485,10 +680,8 @@ public class PirateStackManager : MonoBehaviour
     {
         if (pirate == null) return;
 
-        Collider col = pirate.GetComponent<Collider>();
-        if (col != null) col.enabled = false;
-
-        pirate.tag = "Untagged";
+        SetCollidersEnabled(pirate, false);
+        SetTagRecursively(pirate, "Untagged");
         SetLayerRecursively(pirate, LayerMask.NameToLayer("Default"));
 
         PirateJuice juice = pirate.GetComponentInChildren<PirateJuice>();

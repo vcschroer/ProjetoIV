@@ -126,11 +126,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 989b3b2dd23823848abe180c41092fe4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BlockTile
-  data: {fileID: 11400000, guid: c83a0ed3266f04447acde76464f21756, type: 2}
+  data: {fileID: 11400000, guid: 1d207aee74338f24abb9a5a26b6badeb, type: 2}
   gridPosition: {x: 0, y: 0, z: 0}
   maxAllowedHeight: 0
   isWaterTile: 0
   isQuicksand: 0
+  outlineObject: {fileID: 0}
 --- !u!1001 &3752671258313410418
 PrefabInstance:
   m_ObjectHideFlags: 0
