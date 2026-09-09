@@ -7,7 +7,10 @@ public class Menu : MonoBehaviour
 
     private void Start()
     {
-        botaoJogar.onClick.AddListener(IniciarJogo);
+        if (botaoJogar != null)
+        {
+            botaoJogar.onClick.AddListener(IniciarJogo);
+        }
     }
 
     private void IniciarJogo()
