@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.EventSystems; 
+using UnityEngine.EventSystems;
 
 public class PlayerController : MonoBehaviour
 {
@@ -10,6 +10,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float jumpHeight = 0.4f;
     [SerializeField] private LayerMask tileLayer;
+
+    [Header("Configurações de Transição")]
+    [Tooltip("Nome exato da cena do Menu Principal na Build Settings.")]
+    [SerializeField] private string nomeCenaMenu = "Menu";
 
     [Header("Efeitos Visuais / Partículas")]
     [SerializeField] private ParticleSystem dustParticles;
@@ -32,7 +36,6 @@ public class PlayerController : MonoBehaviour
             HandleLeftClick();
         }
     }
-
 
     public void SetInputLock(bool locked)
     {
@@ -167,6 +170,7 @@ public class PlayerController : MonoBehaviour
     private IEnumerator SinkInQuicksandRoutine()
     {
         isMoving = true;
+        SetInputLock(true); // Bloqueia novos cliques do jogador
 
         Vector3 startPos = transform.position;
         Vector3 sinkTargetPos = startPos + new Vector3(0, -0.65f, 0);
@@ -179,6 +183,7 @@ public class PlayerController : MonoBehaviour
 
         PlayDustParticles();
 
+        // 1. Animação do jogador afundando na areia
         while (elapsed < sinkDuration)
         {
             elapsed += Time.deltaTime;
@@ -193,7 +198,17 @@ public class PlayerController : MonoBehaviour
         }
 
         transform.position = sinkTargetPos;
-        isMoving = false;
+
+        yield return new WaitForSeconds(1.0f);
+
+        if (TransitionManager.Instance != null)
+        {
+            TransitionManager.Instance.CarregarCena(nomeCenaMenu);
+        }
+        else
+        {
+            UnityEngine.SceneManagement.SceneManager.LoadScene(nomeCenaMenu);
+        }
     }
 
     private void PlayDustParticles()

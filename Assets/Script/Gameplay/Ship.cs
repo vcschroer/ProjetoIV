@@ -14,30 +14,30 @@ public class Ship : MonoBehaviour
     [SerializeField] private bool randomPhase = true;
 
     [Header("Piratas")]
-    [SerializeField] private Transform[] shipSpawnPoints;       // Pontos distintos no convés do navio
-    [SerializeField] private GameObject playerInstance;          // Pirata Líder
-    [SerializeField] private GameObject[] extraPirateInstances; // Os outros piratas
+    [SerializeField] private Transform[] shipSpawnPoints;     
+    [SerializeField] private GameObject playerInstance;         
+    [SerializeField] private GameObject[] extraPirateInstances; 
 
     [Header("Referências de Chão (Tiles)")]
-    [SerializeField] private Transform landingTile;              // Bloco de chão onde eles pousam ao pular do navio
-    [SerializeField] private Transform startTile;                // Bloco de chão onde a fase realmente começa
-    [SerializeField] private float yOffsetAboveTile = 1.0f;       // Altura acima do bloco para o pirata pisar
+    [SerializeField] private Transform landingTile;           
+    [SerializeField] private Transform startTile;                
+    [SerializeField] private float yOffsetAboveTile = 1.0f;      
 
     [Header("Configurações de Animação / Cutscene")]
-    [SerializeField] private float startDelay = 0.5f;            // Delay antes de iniciar desembarque
+    [SerializeField] private float startDelay = 0.5f;          
     [SerializeField] private float jumpFromShipDuration = 0.55f;
     [SerializeField] private float jumpFromShipArcHeight = 1.4f;
     [SerializeField] private float delayBetweenJumps = 0.15f;
     [SerializeField] private float walkSpeed = 5f;
-    [SerializeField] private float stepJumpHeight = 0.4f;        // Altura do pulo tile a tile
+    [SerializeField] private float stepJumpHeight = 0.4f;       
 
     [Header("Câmera / Zoom Cutscene")]
-    [SerializeField] private float cutsceneZoomDistance = 14.0f; // Distância durante a animação
-    [SerializeField] private float normalZoomDistance = 60.0f;   // Distância normal após a animação
+    [SerializeField] private float cutsceneZoomDistance = 14.0f; 
+    [SerializeField] private float normalZoomDistance = 60.0f;  
 
     [Header("Cutscene do Mapa do Tesouro")]
-    [SerializeField] private float mapDisplayDelay = 0.2f;        // Pequena pausa antes de exibir o mapa
-    [SerializeField] private float autoMinimizeDelay = 2.5f;     // Tempo em segundos que o mapa fica aberto
+    [SerializeField] private float mapDisplayDelay = 0.2f;       
+    [SerializeField] private float autoMinimizeDelay = 2.5f;    
 
     private Vector3 basePosition;
     private Quaternion baseRotation;
@@ -116,14 +116,12 @@ public class Ship : MonoBehaviour
 
     private IEnumerator PirateLandingSequence()
     {
-        // Trava controles do jogador
         PlayerController playerController = playerInstance != null ? playerInstance.GetComponent<PlayerController>() : null;
         if (playerController != null)
         {
             playerController.SetInputLock(true);
         }
 
-        // Aplica o zoom aproximado na câmera
         IsometricOrbitCamera orbitCamera = Camera.main != null ? Camera.main.GetComponent<IsometricOrbitCamera>() : null;
         if (orbitCamera != null)
         {
@@ -148,14 +146,12 @@ public class Ship : MonoBehaviour
         Vector3 landingWorldPos = landingTile.position + Vector3.up * yOffsetAboveTile;
         PirateStackManager stackManager = playerInstance != null ? playerInstance.GetComponent<PirateStackManager>() : null;
 
-        // 1. PULO DO LÍDER PARA O LANDING TILE
         if (playerInstance != null)
         {
             playerInstance.transform.SetParent(null);
             yield return StartCoroutine(JumpPirateToGrid(playerInstance, landingWorldPos));
         }
 
-        // 2. DEMAIS PIRATAS PULAM PARA A PILHA
         if (extraPirateInstances != null)
         {
             float stepH = stackManager != null ? stackManager.StepHeight : 1.0f;
@@ -185,7 +181,6 @@ public class Ship : MonoBehaviour
             }
         }
 
-        // 3. CAMINHADA TILE A TILE ATÉ O START TILE
         if (startTile != null && startTile != landingTile)
         {
             Vector3Int startStandGridPos = GetStandGridPosition(landingTile);
@@ -207,7 +202,6 @@ public class Ship : MonoBehaviour
             }
         }
 
-        // 4. EXIBE O MAPA COM FADE IN E AGUARDA A MINIMIZAÇÃO COMPLETA
         if (TreasureMapUI.Instance != null)
         {
             if (mapDisplayDelay > 0f)
@@ -218,13 +212,11 @@ public class Ship : MonoBehaviour
             yield return TreasureMapUI.Instance.ShowIntroSequence(autoMinimizeDelay);
         }
 
-        // 5. REMOVE O ZOOM DA CÂMERA SOMENTE APÓS O MAPA MINIMIZAR
         if (orbitCamera != null)
         {
             orbitCamera.SetZoomLock(false, normalZoomDistance);
         }
 
-        // 6. LIBERA OS CONTROLES DO JOGADOR
         if (playerController != null)
         {
             playerController.SetInputLock(false);

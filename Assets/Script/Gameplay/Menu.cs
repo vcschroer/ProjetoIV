@@ -17,7 +17,7 @@ public class Menu : MonoBehaviour
     {
         if (TransitionManager.Instance != null)
         {
-            TransitionManager.Instance.CarregarCena("GameTest 1");
+            TransitionManager.Instance.CarregarCena("Tutorial 1");
         }
     }
 }
