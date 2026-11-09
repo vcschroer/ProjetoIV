@@ -12,7 +12,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask tileLayer;
 
     [Header("Configurações de Transição")]
-    [Tooltip("Nome exato da cena do Menu Principal na Build Settings.")]
     [SerializeField] private string nomeCenaMenu = "Menu";
 
     [Header("Efeitos Visuais / Partículas")]
@@ -124,6 +123,8 @@ public class PlayerController : MonoBehaviour
 
             PlayDustParticles();
 
+            FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/STEP", transform.position);
+
             if (stackManager != null)
             {
                 stackManager.OnPlayerStep();
@@ -151,9 +152,11 @@ public class PlayerController : MonoBehaviour
 
             if (groundTile.isQuicksand)
             {
-                if (stackManager != null && stackManager.GetStackCount() > 0)
+                int stackCount = (stackManager != null) ? stackManager.GetStackCount() : 0;
+
+                if (stackManager != null && stackCount > 0)
                 {
-                    StartCoroutine(SinkInQuicksandRoutine());
+                    StartCoroutine(SinkInQuicksandRoutine(stackCount));
                     yield break;
                 }
             }
@@ -167,10 +170,16 @@ public class PlayerController : MonoBehaviour
         isMoving = false;
     }
 
-    private IEnumerator SinkInQuicksandRoutine()
+    private IEnumerator SinkInQuicksandRoutine(int stackCount)
     {
         isMoving = true;
-        SetInputLock(true); // Bloqueia novos cliques do jogador
+        SetInputLock(true);
+
+        Debug.Log("Afundando na areia movediça com stackCount: " + stackCount);
+
+
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/DERROTA", transform.position);
+
 
         Vector3 startPos = transform.position;
         Vector3 sinkTargetPos = startPos + new Vector3(0, -0.65f, 0);
@@ -183,7 +192,6 @@ public class PlayerController : MonoBehaviour
 
         PlayDustParticles();
 
-        // 1. Animação do jogador afundando na areia
         while (elapsed < sinkDuration)
         {
             elapsed += Time.deltaTime;

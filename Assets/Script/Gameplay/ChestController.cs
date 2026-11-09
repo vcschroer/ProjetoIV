@@ -169,6 +169,8 @@ public class ChestController : MonoBehaviour
 
         if (digParticles != null) digParticles.Play();
 
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/DIG", transform.position);
+
         Vector3 fullyBuriedPos = startPosition + new Vector3(0, fullyBuriedYOffset, 0);
         Vector3 partiallyBuriedPos = startPosition + new Vector3(0, buriedYOffset, 0);
 
@@ -237,6 +239,8 @@ public class ChestController : MonoBehaviour
         }
 
         if (digParticles != null) digParticles.Play();
+
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/DIG", transform.position);
 
         Vector3 buriedPosition = startPosition + new Vector3(0, buriedYOffset, 0);
         Quaternion initialRotation = startRotation * Quaternion.Euler(buriedTiltOffset);
@@ -324,6 +328,9 @@ public class ChestController : MonoBehaviour
                 if (requiresKey && !hasKey)
                 {
                     Debug.Log("O baú está trancado! Você precisa de uma chave para abri-lo.");
+
+                    FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/BAU FAIL", transform.position);
+
                     StartCoroutine(LockedShakeRoutine());
                     return;
                 }
@@ -332,6 +339,8 @@ public class ChestController : MonoBehaviour
                 {
                     hasKey = false;
                 }
+
+                FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/CHEST OPEN", transform.position);
 
                 StartCoroutine(ChestJuiceRoutine());
             }

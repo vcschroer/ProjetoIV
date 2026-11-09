@@ -23,6 +23,8 @@ public class CrateStackManager : MonoBehaviour
     private void Awake()
     {
         pirateStackManager = GetComponent<PirateStackManager>();
+
+        stackedCrates.Clear();
     }
 
     private void Update()

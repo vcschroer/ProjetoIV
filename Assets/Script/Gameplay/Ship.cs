@@ -14,30 +14,30 @@ public class Ship : MonoBehaviour
     [SerializeField] private bool randomPhase = true;
 
     [Header("Piratas")]
-    [SerializeField] private Transform[] shipSpawnPoints;     
-    [SerializeField] private GameObject playerInstance;         
-    [SerializeField] private GameObject[] extraPirateInstances; 
+    [SerializeField] private Transform[] shipSpawnPoints;
+    [SerializeField] private GameObject playerInstance;
+    [SerializeField] private GameObject[] extraPirateInstances;
 
     [Header("Referências de Chão (Tiles)")]
-    [SerializeField] private Transform landingTile;           
-    [SerializeField] private Transform startTile;                
-    [SerializeField] private float yOffsetAboveTile = 1.0f;      
+    [SerializeField] private Transform landingTile;
+    [SerializeField] private Transform startTile;
+    [SerializeField] private float yOffsetAboveTile = 1.0f;
 
     [Header("Configurações de Animação / Cutscene")]
-    [SerializeField] private float startDelay = 0.5f;          
+    [SerializeField] private float startDelay = 0.5f;
     [SerializeField] private float jumpFromShipDuration = 0.55f;
     [SerializeField] private float jumpFromShipArcHeight = 1.4f;
     [SerializeField] private float delayBetweenJumps = 0.15f;
     [SerializeField] private float walkSpeed = 5f;
-    [SerializeField] private float stepJumpHeight = 0.4f;       
+    [SerializeField] private float stepJumpHeight = 0.4f;
 
     [Header("Câmera / Zoom Cutscene")]
-    [SerializeField] private float cutsceneZoomDistance = 14.0f; 
-    [SerializeField] private float normalZoomDistance = 60.0f;  
+    [SerializeField] private float cutsceneZoomDistance = 14.0f;
+    [SerializeField] private float normalZoomDistance = 60.0f;
 
     [Header("Cutscene do Mapa do Tesouro")]
-    [SerializeField] private float mapDisplayDelay = 0.2f;       
-    [SerializeField] private float autoMinimizeDelay = 2.5f;    
+    [SerializeField] private float mapDisplayDelay = 0.2f;
+    [SerializeField] private float autoMinimizeDelay = 2.5f;
 
     private Vector3 basePosition;
     private Quaternion baseRotation;
@@ -150,6 +150,8 @@ public class Ship : MonoBehaviour
         {
             playerInstance.transform.SetParent(null);
             yield return StartCoroutine(JumpPirateToGrid(playerInstance, landingWorldPos));
+
+            FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/STEP", playerInstance.transform.position);
         }
 
         if (extraPirateInstances != null)
@@ -165,6 +167,8 @@ public class Ship : MonoBehaviour
 
                 Vector3 targetStackPos = landingWorldPos + Vector3.up * ((i + 1) * stepH);
                 yield return StartCoroutine(JumpPirateToGrid(extraPirate, targetStackPos));
+
+                FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/STEP", extraPirate.transform.position);
 
                 if (stackManager != null)
                 {
@@ -286,6 +290,8 @@ public class Ship : MonoBehaviour
             }
 
             playerInstance.transform.position = targetWorldPos;
+
+            FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/STEP", playerInstance.transform.position);
 
             if (stackManager != null)
             {

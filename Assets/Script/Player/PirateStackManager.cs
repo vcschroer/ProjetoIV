@@ -283,7 +283,6 @@ public class PirateStackManager : MonoBehaviour
                     }
                 }
 
-                // PRIORIDADE 3: ANDAR
                 if (clickedTile.data != null && clickedTile.data.isWalkable)
                 {
                     CursorManager.Instance.SetCursorType(CursorState.WalkToTile);
@@ -441,6 +440,9 @@ public class PirateStackManager : MonoBehaviour
         if (stackedPirates.Contains(pirate)) yield break;
 
         isBusy = true;
+
+        // Som de passo ao pegar o pirata de volta
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/STEP", pirate.transform.position);
 
         Vector3Int currentPirateGridPos = Vector3Int.RoundToInt(pirate.transform.position);
 
@@ -608,6 +610,8 @@ public class PirateStackManager : MonoBehaviour
 
         if (isWater)
         {
+            FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/WATER DROP", pirate.transform.position);
+
             BlockTile waterTile = GridManager.Instance != null ? GridManager.Instance.GetTileAt(finalGridPos) : targetTile;
             if (waterTile != null && waterTile.data != null)
             {
@@ -622,6 +626,8 @@ public class PirateStackManager : MonoBehaviour
         }
         else
         {
+            FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/STEP", pirate.transform.position);
+
             if (juice != null)
             {
                 juice.TriggerDropSquash();

@@ -10,11 +10,11 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
     public bool IsExpanded => isExpanded;
 
     [Header("Referências da UI")]
-    [SerializeField] private RectTransform mapParchment; // O painel/imagem do papel do mapa
-    [SerializeField] private Image backgroundPanel;     // O painel preto de fundo
-    [SerializeField] private GameObject pathDotPrefab;  // Prefab de um pontinho (UI Image)
-    [SerializeField] private GameObject startMarkPrefab; // Prefab do Início
-    [SerializeField] private GameObject xMarkPrefab;    // Prefab do ícone 'X' Final
+    [SerializeField] private RectTransform mapParchment;
+    [SerializeField] private Image backgroundPanel;
+    [SerializeField] private GameObject pathDotPrefab;
+    [SerializeField] private GameObject startMarkPrefab;
+    [SerializeField] private GameObject xMarkPrefab;
 
     [Header("Configurações do Fundo Escuro")]
     [Range(0f, 1f)]
@@ -36,7 +36,7 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
     [SerializeField] private Vector3 expandedScale = new Vector3(2.5f, 2.5f, 1f);
     [SerializeField] private float animationDuration = 0.25f;
     [SerializeField] private bool centerWhenExpanded = true;
-    [SerializeField] private bool startHidden = true; // Inicia invisível até a cutscene acioná-lo
+    [SerializeField] private bool startHidden = true;
 
     [Header("Configurações de Rotação pelo Jogador")]
     [SerializeField] private float clickThreshold = 10f;
@@ -49,7 +49,7 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
     private bool isExpanded = false;
     private bool isAnimating = false;
     private bool isHidden = false;
-    private bool isIntroRunning = false; // Trava o clique do jogador durante a intro
+    private bool isIntroRunning = false;
     private Coroutine resizeCoroutine;
     private Vector2 originalAnchoredPosition;
     private Vector2 pointerDownPosition;
@@ -72,7 +72,6 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
         {
             originalAnchoredPosition = mapParchment.anchoredPosition;
 
-            // Adiciona ou obtém o CanvasGroup para controle de transparência (Fade)
             mapCanvasGroup = mapParchment.GetComponent<CanvasGroup>();
             if (mapCanvasGroup == null)
             {
@@ -114,7 +113,6 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
     private void OnBackgroundClicked()
     {
-        // Impede minimizar pelo fundo se estiver animando ou na sequência da intro
         if (isExpanded && !isAnimating && !isIntroRunning)
         {
             ToggleExpand();
@@ -168,6 +166,8 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
         isExpanded = !isExpanded;
 
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/MAP");
+
         if (resizeCoroutine != null)
         {
             StopCoroutine(resizeCoroutine);
@@ -180,9 +180,6 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
         resizeCoroutine = StartCoroutine(AnimateMap(targetScale, targetPos, targetRot));
     }
 
-    /// <summary>
-    /// Exibe o mapa usando FADE IN no centro, aguarda o tempo determinado e minimiza.
-    /// </summary>
     public Coroutine ShowIntroSequence(float autoMinimizeDelay)
     {
         if (resizeCoroutine != null)
@@ -195,12 +192,13 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
     private IEnumerator FadeInIntroSequenceCoroutine(float autoMinimizeDelay)
     {
-        isIntroRunning = true; // Bloqueia a ação do jogador
+        isIntroRunning = true;
         isHidden = false;
         isExpanded = true;
         isAnimating = true;
 
-        // Prepara o mapa centralizado e na escala expandida antes do fade
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/MAP");
+
         mapParchment.localScale = expandedScale;
         mapParchment.anchoredPosition = centerWhenExpanded ? Vector2.zero : originalAnchoredPosition;
         mapParchment.localRotation = Quaternion.identity;
@@ -216,7 +214,6 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
         float elapsed = 0f;
 
-        // Animação de Fade In
         while (elapsed < animationDuration)
         {
             elapsed += Time.deltaTime;
@@ -247,18 +244,24 @@ public class TreasureMapUI : MonoBehaviour, IPointerClickHandler, IPointerDownHa
 
         isAnimating = false;
 
-        // Pausa com o mapa aberto (O jogador não conseguirá fechar durante este tempo)
         if (autoMinimizeDelay > 0f)
         {
             yield return new WaitForSeconds(autoMinimizeDelay);
         }
 
-        isIntroRunning = false; // Libera a trava do jogador pouco antes de minimizar
+        isIntroRunning = false;
 
-        // Minimiza o mapa para o canto
-        ToggleExpand();
+        isExpanded = false;
 
-        // Aguarda a animação de minimização concluir completamente antes de liberar o Ship.cs
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/MAP");
+
+        if (resizeCoroutine != null)
+        {
+            StopCoroutine(resizeCoroutine);
+        }
+
+        resizeCoroutine = StartCoroutine(AnimateMap(minimizedScale, originalAnchoredPosition, Quaternion.identity));
+
         while (isAnimating)
         {
             yield return null;

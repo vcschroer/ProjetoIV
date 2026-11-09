@@ -14,7 +14,7 @@ public class KeyItem : MonoBehaviour
     [Header("Animação de Coleta (Squash & Stretch)")]
     [SerializeField] private float popScaleMultiplier = 1.5f;
     [SerializeField] private float animationDuration = 0.5f;
-    [SerializeField, Range(0f, 1f)] private float squashAmount = 0.35f; 
+    [SerializeField, Range(0f, 1f)] private float squashAmount = 0.35f;
     [SerializeField] private ParticleSystem pickupParticlesPrefab;
     [SerializeField] private int particleCount = 25;
 
@@ -105,6 +105,9 @@ public class KeyItem : MonoBehaviour
         {
             itemCollider.enabled = false;
         }
+
+        // Toca o som de pegar a chave (CHAVE PEGAR) na posição exata do item
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/CHAVE PEGAR", transform.position);
 
         if (targetChest != null)
         {

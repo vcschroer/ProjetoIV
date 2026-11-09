@@ -8,29 +8,19 @@ public class UIElementEffects : MonoBehaviour, IPointerEnterHandler, IPointerExi
 {
     [Header("Wobble")]
     [SerializeField] private bool usarWobble = false;
-
     [SerializeField] private float velocidadeWobble = 4f;
-
     [SerializeField] private float anguloMaximo = 8f;
-
 
     [Header("Hover Scale")]
     [SerializeField] private bool usarHoverScale = false;
-
     [SerializeField] private float escalaHover = 1.12f;
-
     [SerializeField] private float duracaoTransicaoScale = 0.1f;
-
 
     [Header("Text Wave")]
     [SerializeField] private bool usarTextWave = false;
-
     [SerializeField] private float velocidadeWave = 5f;
-
     [SerializeField] private float alturaOnda = 6f;
-
     [SerializeField] private float frequenciaOnda = 0.35f;
-
 
     private RectTransform rectTransform;
     private Quaternion rotacaoInicial;
@@ -128,6 +118,11 @@ public class UIElementEffects : MonoBehaviour, IPointerEnterHandler, IPointerExi
         }
 
         transform.localScale = escalaAlvo;
+    }
+
+    public void PlayButtonSound()
+    {
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/BUTTON PRESS");
     }
 
     private void OnDisable()

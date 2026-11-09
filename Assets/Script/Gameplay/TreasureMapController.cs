@@ -20,7 +20,7 @@ public class TreasureMapController : MonoBehaviour
 
     private IEnumerator GenerateMapRoutine()
     {
-        yield return null; // Aguarda o GridManager inicializar
+        yield return null; 
 
         if (GridManager.Instance == null || playerStart == null || chestTarget == null || mapUI == null)
         {
@@ -31,20 +31,16 @@ public class TreasureMapController : MonoBehaviour
         List<Vector3Int> fullPath = new List<Vector3Int>();
         Vector2Int currentStartXZ = new Vector2Int(Mathf.RoundToInt(playerStart.position.x), Mathf.RoundToInt(playerStart.position.z));
 
-        // 1. Cria a lista de todos os lugares que a linha precisa visitar em ordem
         List<Vector2Int> allTargets = new List<Vector2Int>();
 
-        // Adiciona os waypoints que você colocar no Inspector
         foreach (var wp in waypoints)
         {
             if (wp != null)
                 allTargets.Add(new Vector2Int(Mathf.RoundToInt(wp.position.x), Mathf.RoundToInt(wp.position.z)));
         }
 
-        // O baú é sempre o último destino
         allTargets.Add(new Vector2Int(Mathf.RoundToInt(chestTarget.position.x), Mathf.RoundToInt(chestTarget.position.z)));
 
-        // 2. Calcula o caminho "costurando" ponto a ponto
         foreach (var targetXZ in allTargets)
         {
             List<Vector3Int> segment = GridManager.Instance.Find2DPathWithHeightLimit(currentStartXZ, targetXZ);
@@ -52,10 +48,9 @@ public class TreasureMapController : MonoBehaviour
             if (segment == null || segment.Count == 0)
             {
                 Debug.LogWarning($"Não foi possível encontrar caminho no trecho até o alvo {targetXZ}!");
-                yield break; // Interrompe se algum trecho falhar
+                yield break;
             }
 
-            // Remove o primeiro ponto do segmento para não desenhar dois pontos em cima do outro na junção
             if (fullPath.Count > 0)
             {
                 segment.RemoveAt(0);
@@ -63,11 +58,9 @@ public class TreasureMapController : MonoBehaviour
 
             fullPath.AddRange(segment);
 
-            // O início do próximo trecho é o fim do trecho atual
             currentStartXZ = targetXZ;
         }
 
-        // 3. Desenha o caminho completo
         if (fullPath.Count > 0)
         {
             mapUI.GenerateMapPath(fullPath);
