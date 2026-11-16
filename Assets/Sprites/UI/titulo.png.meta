@@ -100,10 +100,10 @@ TextureImporter:
       name: titulo_0
       rect:
         serializedVersion: 2
-        x: 456
-        y: 644
-        width: 992
-        height: 230
+        x: 80
+        y: 383
+        width: 1104
+        height: 255
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -112,8 +112,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 7d1c582715c352147838e47d6b3b6b37
-      internalID: -367813945
+      spriteID: 58fa05b7b9f9e954fa7ccfc156d324da
+      internalID: -1343556228
       vertices: []
       indices: 
       edges: []
@@ -122,10 +122,10 @@ TextureImporter:
       name: titulo_1
       rect:
         serializedVersion: 2
-        x: 369
-        y: 340
-        width: 1245
-        height: 297
+        x: 30
+        y: 68
+        width: 1274
+        height: 316
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -134,8 +134,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: 0
       bones: []
-      spriteID: 065dc9dddab023342bb96738893d9127
-      internalID: -1371299321
+      spriteID: 35ec02f5be9c9794ca9f72c167832528
+      internalID: -814063498
       vertices: []
       indices: 
       edges: []
@@ -144,7 +144,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: bfe61804bb017ef45ace54f35216d616
+    spriteID: 49a99db851a717649a7434e4c30e14fd
     internalID: 0
     vertices: []
     indices: 
@@ -154,8 +154,8 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      titulo_0: -367813945
-      titulo_1: -1371299321
+      titulo_0: -1343556228
+      titulo_1: -814063498
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

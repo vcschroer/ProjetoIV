@@ -8,6 +8,10 @@ public class MenuWaveEffect : MonoBehaviour
     [SerializeField] private GameObject wavePrefab;
     [SerializeField] private Transform waveContainer;
 
+    [Header("Conchas e Pedrinhas na Beira do Mar")]
+    [SerializeField] private RectTransform[] shellTransforms;
+    [SerializeField] private float shellPushDistance = 15f;
+    [SerializeField] private float shellSmoothSpeed = 6f;   
     [Header("Movimento Horizontal (Vinda da Direita)")]
     [SerializeField] private float startX = 600f;
     [SerializeField] private float maxTravelDistance = 350f;
@@ -30,10 +34,22 @@ public class MenuWaveEffect : MonoBehaviour
     }
 
     private List<WaveData> activeWaves = new List<WaveData>();
+    private Dictionary<RectTransform, Vector2> shellsOriginalPositions = new Dictionary<RectTransform, Vector2>();
     private float spawnTimer = 0f;
 
     private void Start()
     {
+        if (shellTransforms != null)
+        {
+            foreach (RectTransform shell in shellTransforms)
+            {
+                if (shell != null)
+                {
+                    shellsOriginalPositions[shell] = shell.anchoredPosition;
+                }
+            }
+        }
+
         SpawnWave();
     }
 
@@ -45,6 +61,8 @@ public class MenuWaveEffect : MonoBehaviour
             spawnTimer = 0f;
             SpawnWave();
         }
+
+        float maxWaveExtension = 0f;
 
         for (int i = activeWaves.Count - 1; i >= 0; i--)
         {
@@ -59,8 +77,14 @@ public class MenuWaveEffect : MonoBehaviour
             wave.elapsedTime += Time.deltaTime;
             float progress = Mathf.Clamp01(wave.elapsedTime / waveDuration);
 
-            float currentX = Mathf.Lerp(startX, startX - maxTravelDistance, Mathf.Sin(progress * Mathf.PI));
+            float waveCurve = Mathf.Sin(progress * Mathf.PI);
 
+            if (waveCurve > maxWaveExtension)
+            {
+                maxWaveExtension = waveCurve;
+            }
+
+            float currentX = Mathf.Lerp(startX, startX - maxTravelDistance, waveCurve);
             float currentY = wave.initialY + Mathf.Sin((wave.elapsedTime * verticalSpeed) + wave.randomSeed) * verticalAmplitude;
 
             wave.rectTransform.anchoredPosition = new Vector2(currentX, currentY);
@@ -74,6 +98,25 @@ public class MenuWaveEffect : MonoBehaviour
             {
                 Destroy(wave.image.gameObject);
                 activeWaves.RemoveAt(i);
+            }
+        }
+
+        UpdateShellsSync(maxWaveExtension);
+    }
+
+    private void UpdateShellsSync(float waveExtension)
+    {
+        if (shellTransforms == null) return;
+
+        foreach (RectTransform shell in shellTransforms)
+        {
+            if (shell != null && shellsOriginalPositions.TryGetValue(shell, out Vector2 origPos))
+            {
+
+                float targetOffsetX = -waveExtension * shellPushDistance;
+                Vector2 targetPos = origPos + new Vector2(targetOffsetX, 0f);
+
+                shell.anchoredPosition = Vector2.Lerp(shell.anchoredPosition, targetPos, Time.deltaTime * shellSmoothSpeed);
             }
         }
     }

@@ -128,16 +128,13 @@ public class MenuCrabController : MonoBehaviour
         float limitX = halfWidth + maxAllowedDistanceOutside;
         float limitY = halfHeight + maxAllowedDistanceOutside;
 
-        // Se passar da borda permitida para fora, obriga a apontar para o centro da tela caminhando
         if (Mathf.Abs(currentPos.x) > limitX || Mathf.Abs(currentPos.y) > limitY)
         {
             stuckTimer += Time.deltaTime;
 
-            // Aponta o ângulo de volta para o centro (0,0)
             Vector2 dirToCenter = (Vector2.zero - currentPos).normalized;
             targetRotationAngle = Mathf.Atan2(dirToCenter.y, dirToCenter.x) * Mathf.Rad2Deg;
 
-            // Se demorar mais de 1 segundo tentando voltar (caso estivesse em um canto muito preso), dá um empurrãozinho leve na direção do centro
             if (stuckTimer >= 1.0f)
             {
                 crabRect.anchoredPosition = Vector2.Lerp(currentPos, Vector2.zero, Time.deltaTime * 2f);
