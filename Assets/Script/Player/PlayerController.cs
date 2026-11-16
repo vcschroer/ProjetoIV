@@ -16,9 +16,17 @@ public class PlayerController : MonoBehaviour
 
     [Header("Efeitos Visuais / Partículas")]
     [SerializeField] private ParticleSystem dustParticles;
+    [SerializeField] private ParticleSystem waterSplashParticles;
+
+    [Header("Configurações de Afogamento")]
+    [SerializeField] private float waterSinkDepth = 2.5f;
+    [SerializeField] private float waterSinkDuration = 2.2f;
 
     private bool isMoving = false;
     private bool isInputLocked = false;
+
+    public bool IsMoving => isMoving;
+    public bool IsInputLocked => isInputLocked;
 
     private void Update()
     {
@@ -40,8 +48,6 @@ public class PlayerController : MonoBehaviour
     {
         isInputLocked = locked;
     }
-
-    public bool IsInputLocked => isInputLocked;
 
     private void HandleLeftClick()
     {
@@ -75,6 +81,11 @@ public class PlayerController : MonoBehaviour
 
                     if (isPathValid)
                     {
+                        if (SeaTideController.Instance != null)
+                        {
+                            SeaTideController.Instance.RegisterPlayerMoveClick();
+                        }
+
                         StopAllCoroutines();
                         StartCoroutine(MoveAlongPath(path));
                     }
@@ -156,7 +167,7 @@ public class PlayerController : MonoBehaviour
 
                 if (stackManager != null && stackCount > 0)
                 {
-                    StartCoroutine(SinkInQuicksandRoutine(stackCount));
+                    StartCoroutine(SinkInQuicksandRoutine());
                     yield break;
                 }
             }
@@ -170,16 +181,18 @@ public class PlayerController : MonoBehaviour
         isMoving = false;
     }
 
-    private IEnumerator SinkInQuicksandRoutine(int stackCount)
+    public void DrownInWater()
+    {
+        StopAllCoroutines();
+        StartCoroutine(SinkInWaterRoutine());
+    }
+
+    private IEnumerator SinkInQuicksandRoutine()
     {
         isMoving = true;
         SetInputLock(true);
 
-        Debug.Log("Afundando na areia movediça com stackCount: " + stackCount);
-
-
         FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/DERROTA", transform.position);
-
 
         Vector3 startPos = transform.position;
         Vector3 sinkTargetPos = startPos + new Vector3(0, -0.65f, 0);
@@ -209,6 +222,59 @@ public class PlayerController : MonoBehaviour
 
         yield return new WaitForSeconds(1.0f);
 
+        ReturnToMenu();
+    }
+
+    private IEnumerator SinkInWaterRoutine()
+    {
+        isMoving = true;
+        SetInputLock(true);
+
+        FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/DERROTA", transform.position);
+
+        if (waterSplashParticles != null)
+        {
+            waterSplashParticles.Play();
+        }
+
+        Vector3 startPos = transform.position;
+        Quaternion startRot = transform.rotation;
+
+        float elapsed = 0f;
+
+        while (elapsed < waterSinkDuration)
+        {
+            elapsed += Time.deltaTime;
+            float progress = elapsed / waterSinkDuration;
+
+            float smoothSink = Mathf.SmoothStep(0f, 1f, progress);
+            float baseSinkY = Mathf.Lerp(startPos.y, startPos.y - waterSinkDepth, smoothSink);
+
+            float fadeOutIntensity = 1f - progress;
+            float gentleBob = Mathf.Sin(progress * Mathf.PI * 3.5f) * 0.14f * fadeOutIntensity;
+
+            float driftX = Mathf.Sin(progress * Mathf.PI * 2f) * 0.14f * smoothSink;
+            float driftZ = Mathf.Cos(progress * Mathf.PI * 1.5f) * 0.14f * smoothSink;
+
+            float tiltX = Mathf.Sin(progress * Mathf.PI * 3f) * 14f * fadeOutIntensity + (28f * smoothSink);
+            float tiltZ = Mathf.Cos(progress * Mathf.PI * 2.5f) * 16f * fadeOutIntensity;
+            float spinY = Mathf.Lerp(0f, 110f, smoothSink) + (Mathf.Sin(progress * Mathf.PI * 3f) * 18f * fadeOutIntensity);
+
+            transform.position = new Vector3(startPos.x + driftX, baseSinkY + gentleBob, startPos.z + driftZ);
+            transform.rotation = startRot * Quaternion.Euler(tiltX, spinY, tiltZ);
+
+            yield return null;
+        }
+
+        transform.position = startPos + new Vector3(0f, -waterSinkDepth, 0f);
+
+        yield return new WaitForSeconds(0.6f);
+
+        ReturnToMenu();
+    }
+
+    private void ReturnToMenu()
+    {
         if (TransitionManager.Instance != null)
         {
             TransitionManager.Instance.CarregarCena(nomeCenaMenu);

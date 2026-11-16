@@ -41,12 +41,14 @@ public class Ship : MonoBehaviour
 
     private Vector3 basePosition;
     private Quaternion baseRotation;
+    private float initialBaseY;
     private float phaseOffset;
     private bool isFloating = false;
 
     private void Start()
     {
         basePosition = transform.localPosition;
+        initialBaseY = basePosition.y;
         baseRotation = transform.localRotation;
 
         if (randomPhase)
@@ -80,6 +82,11 @@ public class Ship : MonoBehaviour
         float roll = Mathf.Cos(time * rotationFrequency * 0.85f) * rollAmplitude;
 
         transform.localRotation = baseRotation * Quaternion.Euler(pitch, 0f, roll);
+    }
+
+    public void SetTideOffset(float offset)
+    {
+        basePosition.y = initialBaseY + offset;
     }
 
     public void StartFloating() => isFloating = true;
