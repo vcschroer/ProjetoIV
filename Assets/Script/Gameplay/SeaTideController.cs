@@ -1,6 +1,8 @@
+
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class SeaTideController : MonoBehaviour
 {
@@ -13,92 +15,169 @@ public class SeaTideController : MonoBehaviour
     [SerializeField] private int clicksToChangeTide = 3;
     private int remainingClicks;
 
+    [Header("UI do Contador de Movimentos")]
+    [SerializeField] private TMP_Text tideClicksText;
+    [SerializeField] private string risingPrefix = "";
+    [SerializeField] private string loweringPrefix = "";
+
     [Header("Movimento da Água")]
-    [SerializeField] private float riseAmount = 1.0f;
-    [SerializeField] private float transitionDuration = 1.0f;
+    [SerializeField] private float riseAmount = 1f;
+    [SerializeField] private float transitionDuration = 1f;
 
     [Header("Alinhamento de Flutuação")]
-    [SerializeField] private float floatSurfaceOffset = 0.0f;
+    [SerializeField] private float floatSurfaceOffset = 0f;
 
     [Header("Segurança do Player")]
     [SerializeField] private PlayerController player;
+    [SerializeField] private Collider playerBodyCollider;
     [SerializeField] private float drownHeightThreshold = 0.4f;
 
+    [Header("Detecção de Apoio")]
+    [SerializeField] private float supportProbeDistance = 0.35f;
+    [SerializeField] private float supportRayStartOffset = 0.05f;
+    [SerializeField] private float supportMaxPenetration = 0.15f;
+
     private Ship sceneShip;
-    private bool isTransitioning = false;
-    private bool isHighTide = false;
+
+    private bool isTransitioning;
+    private bool isHighTide;
+
     private float initialWaterY;
 
-    private Dictionary<GameObject, Vector3> floatingObjectsOriginalPositions = new Dictionary<GameObject, Vector3>();
+    private readonly Dictionary<GameObject, Vector3>
+        floatingObjectsOriginalPositions =
+        new Dictionary<GameObject, Vector3>();
 
     private void Awake()
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        if (Instance == null)
+            Instance = this;
+        else
+        {
+            Destroy(gameObject);
+            return;
+        }
 
         remainingClicks = clicksToChangeTide;
         initialWaterY = transform.position.y;
+
+        UpdateTideUI();
     }
 
     private void Start()
     {
         sceneShip = FindFirstObjectByType<Ship>();
+
+        if (player == null)
+            player = FindFirstObjectByType<PlayerController>();
+
+        UpdateTideUI();
     }
+
+    // =========================================================
+    // CLIQUES
+    // =========================================================
 
     public void RegisterPlayerMoveClick()
     {
-        if (!isTideActive || isTransitioning) return;
+        if (!isTideActive || isTransitioning)
+            return;
 
-        remainingClicks--;
+        remainingClicks = Mathf.Max(0, remainingClicks - 1);
+
+        UpdateTideUI();
 
         if (remainingClicks <= 0)
         {
             if (!isHighTide)
-            {
                 StartCoroutine(RiseTideRoutine());
-            }
             else
-            {
                 StartCoroutine(LowerTideRoutine());
-            }
         }
     }
+
+    private void UpdateTideUI()
+    {
+        if (tideClicksText == null)
+            return;
+
+        string prefix = isHighTide ? loweringPrefix : risingPrefix;
+
+        tideClicksText.text = $"{prefix}{remainingClicks}";
+    }
+
+    // =========================================================
+    // SUBIDA DA MARÉ
+    // =========================================================
 
     private IEnumerator RiseTideRoutine()
     {
         isTransitioning = true;
 
+        // Dá tempo para o movimento do último clique começar.
+        yield return null;
+
         if (player != null)
         {
             player.SetInputLock(true);
+
+            // Nunca calcula o apoio enquanto o player ainda está andando.
             while (player.IsMoving)
-            {
                 yield return null;
-            }
         }
 
         if (sceneShip == null)
-        {
             sceneShip = FindFirstObjectByType<Ship>();
-        }
 
-        Vector3 startWaterPos = transform.position;
-        Vector3 targetWaterPos = new Vector3(startWaterPos.x, initialWaterY + riseAmount, startWaterPos.z);
+        Vector3 startWaterPosition = transform.position;
 
-        float targetFloatY = targetWaterPos.y + floatSurfaceOffset;
+        Vector3 targetWaterPosition = new Vector3(
+            startWaterPosition.x,
+            initialWaterY + riseAmount,
+            startWaterPosition.z
+        );
 
-        List<GameObject> objectsToFloat = FindDroppedObjectsToFloat(targetFloatY);
-        Dictionary<GameObject, Vector3> startPositions = new Dictionary<GameObject, Vector3>();
-        Dictionary<GameObject, Vector3> targetPositions = new Dictionary<GameObject, Vector3>();
+        float waterDeltaY =
+            targetWaterPosition.y - startWaterPosition.y;
+
+        /*
+         * Usa a superfície REAL do collider da água.
+         * Não presume que o transform da água seja sua superfície.
+         */
+        float currentWaterSurface = GetWaterSurfaceY();
+
+        float targetFloatY =
+            currentWaterSurface + waterDeltaY + floatSurfaceOffset;
+
+        // Guarda posições iniciais e finais dos objetos.
+        List<GameObject> objectsToFloat =
+            BuildFloatingTargets(
+                targetFloatY,
+                out Dictionary<GameObject, Vector3> startPositions,
+                out Dictionary<GameObject, Vector3> targetPositions
+            );
 
         floatingObjectsOriginalPositions.Clear();
 
         foreach (GameObject obj in objectsToFloat)
         {
-            Vector3 objPos = obj.transform.position;
-            floatingObjectsOriginalPositions[obj] = objPos;
-            startPositions[obj] = objPos;
-            targetPositions[obj] = new Vector3(objPos.x, targetFloatY, objPos.z);
+            if (obj != null)
+                floatingObjectsOriginalPositions[obj] = startPositions[obj];
+        }
+
+        // Detecta somente a plataforma realmente embaixo do player.
+        HashSet<GameObject> movingRoots =
+            new HashSet<GameObject>(objectsToFloat);
+
+        GameObject playerSupport = null;
+        Vector3 lastSupportPosition = Vector3.zero;
+
+        if (player != null)
+        {
+            playerSupport = FindPlayerDroppedSupport(movingRoots);
+
+            if (playerSupport != null)
+                lastSupportPosition = playerSupport.transform.position;
         }
 
         float elapsed = 0f;
@@ -106,83 +185,143 @@ public class SeaTideController : MonoBehaviour
         while (elapsed < transitionDuration)
         {
             elapsed += Time.deltaTime;
-            float smoothProgress = Mathf.SmoothStep(0f, 1f, elapsed / transitionDuration);
 
-            transform.position = Vector3.Lerp(startWaterPos, targetWaterPos, smoothProgress);
+            float progress = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(elapsed / transitionDuration)
+            );
 
+            // Água.
+            transform.position = Vector3.Lerp(
+                startWaterPosition,
+                targetWaterPosition,
+                progress
+            );
+
+            // Navio.
             if (sceneShip != null)
             {
-                sceneShip.SetTideOffset(Mathf.Lerp(0f, riseAmount, smoothProgress));
+                sceneShip.SetTideOffset(
+                    Mathf.Lerp(0f, riseAmount, progress)
+                );
             }
 
+            // Caixas e piratas.
             foreach (GameObject obj in objectsToFloat)
             {
-                if (obj != null && (obj.CompareTag("DroppedCrate") || obj.CompareTag("DroppedPirate")))
-                {
-                    obj.transform.position = Vector3.Lerp(startPositions[obj], targetPositions[obj], smoothProgress);
-                }
+                if (obj == null)
+                    continue;
+
+                obj.transform.position = Vector3.Lerp(
+                    startPositions[obj],
+                    targetPositions[obj],
+                    progress
+                );
             }
+
+            /*
+             * PLAYER:
+             * Move apenas a diferença que a plataforma percorreu
+             * neste frame. Não usa posição inicial salva.
+             */
+            MovePlayerWithPlatform(
+                playerSupport,
+                ref lastSupportPosition
+            );
 
             yield return null;
         }
 
-        transform.position = targetWaterPos;
+        // Finaliza água e navio.
+        transform.position = targetWaterPosition;
 
         if (sceneShip != null)
-        {
             sceneShip.SetTideOffset(riseAmount);
-        }
 
+        // Finaliza os objetos.
         foreach (GameObject obj in objectsToFloat)
         {
-            if (obj != null && (obj.CompareTag("DroppedCrate") || obj.CompareTag("DroppedPirate")))
-            {
-                obj.transform.position = targetPositions[obj];
-                UpdateObjectTileData(obj, targetPositions[obj], isFloating: true);
-            }
+            if (obj == null)
+                continue;
+
+            obj.transform.position = targetPositions[obj];
+
+            UpdateObjectTileData(
+                obj,
+                targetPositions[obj],
+                true
+            );
         }
 
         if (GridManager.Instance != null)
-        {
             GridManager.Instance.ScanGrid();
-        }
 
         isHighTide = true;
+
+        // Agora também exige apoio para o player permanecer.
         CheckPlayerSafety();
     }
+
+    // =========================================================
+    // DESCIDA DA MARÉ
+    // =========================================================
 
     private IEnumerator LowerTideRoutine()
     {
         isTransitioning = true;
 
+        yield return null;
+
         if (player != null)
         {
             player.SetInputLock(true);
+
             while (player.IsMoving)
-            {
                 yield return null;
-            }
         }
 
         if (sceneShip == null)
-        {
             sceneShip = FindFirstObjectByType<Ship>();
+
+        Vector3 startWaterPosition = transform.position;
+
+        Vector3 targetWaterPosition = new Vector3(
+            startWaterPosition.x,
+            initialWaterY,
+            startWaterPosition.z
+        );
+
+        List<GameObject> activeFloatingObjects =
+            new List<GameObject>();
+
+        Dictionary<GameObject, Vector3> startPositions =
+            new Dictionary<GameObject, Vector3>();
+
+        foreach (var entry in floatingObjectsOriginalPositions)
+        {
+            GameObject obj = entry.Key;
+
+            if (obj == null)
+                continue;
+
+            activeFloatingObjects.Add(obj);
+            startPositions[obj] = obj.transform.position;
         }
 
-        Vector3 startWaterPos = transform.position;
-        Vector3 targetWaterPos = new Vector3(startWaterPos.x, initialWaterY, startWaterPos.z);
+        // Detecta o apoio antes de começar a descer.
+        HashSet<GameObject> movingRoots =
+            new HashSet<GameObject>(activeFloatingObjects);
 
-        List<GameObject> activeFloatingObjects = new List<GameObject>();
-        Dictionary<GameObject, Vector3> startPositions = new Dictionary<GameObject, Vector3>();
+        GameObject playerSupport = null;
+        Vector3 lastSupportPosition = Vector3.zero;
 
-        foreach (var kvp in floatingObjectsOriginalPositions)
+        if (player != null)
         {
-            GameObject obj = kvp.Key;
-            if (obj != null && (obj.CompareTag("DroppedCrate") || obj.CompareTag("DroppedPirate")))
-            {
-                activeFloatingObjects.Add(obj);
-                startPositions[obj] = obj.transform.position;
-            }
+            playerSupport = FindPlayerDroppedSupport(movingRoots);
+
+            if (playerSupport != null)
+                lastSupportPosition = playerSupport.transform.position;
         }
 
         float elapsed = 0f;
@@ -190,152 +329,517 @@ public class SeaTideController : MonoBehaviour
         while (elapsed < transitionDuration)
         {
             elapsed += Time.deltaTime;
-            float smoothProgress = Mathf.SmoothStep(0f, 1f, elapsed / transitionDuration);
 
-            transform.position = Vector3.Lerp(startWaterPos, targetWaterPos, smoothProgress);
+            float progress = Mathf.SmoothStep(
+                0f,
+                1f,
+                Mathf.Clamp01(elapsed / transitionDuration)
+            );
 
+            // Água.
+            transform.position = Vector3.Lerp(
+                startWaterPosition,
+                targetWaterPosition,
+                progress
+            );
+
+            // Navio.
             if (sceneShip != null)
             {
-                sceneShip.SetTideOffset(Mathf.Lerp(riseAmount, 0f, smoothProgress));
+                sceneShip.SetTideOffset(
+                    Mathf.Lerp(riseAmount, 0f, progress)
+                );
             }
 
+            // Caixas e piratas retornam às posições originais.
             foreach (GameObject obj in activeFloatingObjects)
             {
-                if (obj != null && (obj.CompareTag("DroppedCrate") || obj.CompareTag("DroppedPirate")))
-                {
-                    Vector3 originalPos = floatingObjectsOriginalPositions[obj];
-                    obj.transform.position = Vector3.Lerp(startPositions[obj], originalPos, smoothProgress);
-                }
+                if (obj == null)
+                    continue;
+
+                Vector3 originalPosition =
+                    floatingObjectsOriginalPositions[obj];
+
+                obj.transform.position = Vector3.Lerp(
+                    startPositions[obj],
+                    originalPosition,
+                    progress
+                );
             }
+
+            // Player acompanha a descida da plataforma.
+            MovePlayerWithPlatform(
+                playerSupport,
+                ref lastSupportPosition
+            );
 
             yield return null;
         }
 
-        transform.position = targetWaterPos;
+        transform.position = targetWaterPosition;
 
         if (sceneShip != null)
-        {
             sceneShip.SetTideOffset(0f);
-        }
 
+        // Finaliza todas as posições.
         foreach (GameObject obj in activeFloatingObjects)
         {
-            if (obj != null && (obj.CompareTag("DroppedCrate") || obj.CompareTag("DroppedPirate")))
-            {
-                Vector3 originalPos = floatingObjectsOriginalPositions[obj];
-                obj.transform.position = originalPos;
-                UpdateObjectTileData(obj, originalPos, isFloating: false);
-            }
+            if (obj == null)
+                continue;
+
+            Vector3 originalPosition =
+                floatingObjectsOriginalPositions[obj];
+
+            obj.transform.position = originalPosition;
+
+            UpdateObjectTileData(
+                obj,
+                originalPosition,
+                false
+            );
         }
 
         floatingObjectsOriginalPositions.Clear();
 
         if (GridManager.Instance != null)
-        {
             GridManager.Instance.ScanGrid();
-        }
 
         isHighTide = false;
         remainingClicks = clicksToChangeTide;
-        isTransitioning = false;
 
-        if (player != null)
-        {
-            player.SetInputLock(false);
-        }
+        UpdateTideUI();
+
+        /*
+         * IMPORTANTE:
+         * Não desbloqueia o player automaticamente.
+         * Primeiro verifica se ele realmente tem apoio.
+         */
+        CheckPlayerSafety();
     }
 
-    private List<GameObject> FindDroppedObjectsToFloat(float targetFloatY)
+    // =========================================================
+    // MOVIMENTO DO PLAYER JUNTO COM A PLATAFORMA
+    // =========================================================
+
+    private void MovePlayerWithPlatform(
+        GameObject support,
+        ref Vector3 lastSupportPosition)
+    {
+        if (player == null || support == null)
+            return;
+
+        if (support == null)
+            return;
+
+        Vector3 currentSupportPosition = support.transform.position;
+
+        Vector3 platformDelta =
+            currentSupportPosition - lastSupportPosition;
+
+        player.transform.position += platformDelta;
+
+        lastSupportPosition = currentSupportPosition;
+    }
+
+    // =========================================================
+    // CRIAÇÃO DAS POSIÇÕES DE FLUTUAÇÃO
+    // =========================================================
+
+    private List<GameObject> BuildFloatingTargets(
+        float targetFloatY,
+        out Dictionary<GameObject, Vector3> startPositions,
+        out Dictionary<GameObject, Vector3> targetPositions)
     {
         List<GameObject> result = new List<GameObject>();
-        HashSet<GameObject> uniqueRoots = new HashSet<GameObject>();
 
-        GameObject[] crates = GameObject.FindGameObjectsWithTag("DroppedCrate");
-        GameObject[] pirates = GameObject.FindGameObjectsWithTag("DroppedPirate");
+        startPositions = new Dictionary<GameObject, Vector3>();
+        targetPositions = new Dictionary<GameObject, Vector3>();
 
-        List<GameObject> allTagged = new List<GameObject>();
-        allTagged.AddRange(crates);
-        allTagged.AddRange(pirates);
+        List<GameObject> allObjects = GetAllDroppedRoots();
 
-        foreach (GameObject item in allTagged)
+        Dictionary<Vector2Int, List<GameObject>> columns =
+            new Dictionary<Vector2Int, List<GameObject>>();
+
+        // Agrupa por coluna X/Z.
+        foreach (GameObject obj in allObjects)
         {
-            Transform root = item.transform;
-            while (root.parent != null && (root.parent.CompareTag("DroppedCrate") || root.parent.CompareTag("DroppedPirate")))
+            if (obj == null)
+                continue;
+
+            Vector2Int key = new Vector2Int(
+                Mathf.RoundToInt(obj.transform.position.x),
+                Mathf.RoundToInt(obj.transform.position.z)
+            );
+
+            if (!columns.ContainsKey(key))
+                columns[key] = new List<GameObject>();
+
+            columns[key].Add(obj);
+        }
+
+        foreach (List<GameObject> column in columns.Values)
+        {
+            float lowestY = float.MaxValue;
+
+            // Descobre a base da pilha.
+            foreach (GameObject obj in column)
             {
-                root = root.parent;
+                if (obj == null)
+                    continue;
+
+                lowestY = Mathf.Min(
+                    lowestY,
+                    obj.transform.position.y
+                );
             }
 
-            GameObject rootObj = root.gameObject;
-            if (!uniqueRoots.Contains(rootObj))
-            {
-                uniqueRoots.Add(rootObj);
+            if (lowestY == float.MaxValue)
+                continue;
 
-                if (rootObj.transform.position.y < targetFloatY - 0.05f)
-                {
-                    result.Add(rootObj);
-                }
+            /*
+             * Se a base já está na superfície ou acima dela,
+             * essa coluna não precisa subir.
+             */
+            if (lowestY >= targetFloatY - 0.05f)
+                continue;
+
+            /*
+             * A base vai exatamente até targetFloatY.
+             * TODOS os outros objetos recebem o MESMO deslocamento.
+             *
+             * Assim, uma pilha não é achatada e nenhum objeto
+             * recebe um bloco extra por conta própria.
+             */
+            float columnOffset = targetFloatY - lowestY;
+
+            foreach (GameObject obj in column)
+            {
+                if (obj == null)
+                    continue;
+
+                Vector3 originalPosition = obj.transform.position;
+
+                Vector3 targetPosition =
+                    originalPosition + Vector3.up * columnOffset;
+
+                if (result.Contains(obj))
+                    continue;
+
+                result.Add(obj);
+
+                startPositions[obj] = originalPosition;
+                targetPositions[obj] = targetPosition;
             }
         }
 
         return result;
     }
 
-    private void UpdateObjectTileData(GameObject obj, Vector3 newWorldPos, bool isFloating)
+    private List<GameObject> GetAllDroppedRoots()
     {
-        BlockTile tile = obj.GetComponent<BlockTile>();
-        if (tile != null && tile.data != null)
+        HashSet<GameObject> uniqueRoots = new HashSet<GameObject>();
+
+        GameObject[] crates =
+            GameObject.FindGameObjectsWithTag("DroppedCrate");
+
+        GameObject[] pirates =
+            GameObject.FindGameObjectsWithTag("DroppedPirate");
+
+        foreach (GameObject item in crates)
         {
-            Vector3Int newGridPos = Vector3Int.RoundToInt(newWorldPos);
-            tile.Setup(newGridPos, tile.data);
+            GameObject root = GetDroppedRoot(item.transform);
+
+            if (root != null)
+                uniqueRoots.Add(root);
         }
 
-        PirateJuice juice = obj.GetComponentInChildren<PirateJuice>();
-        if (juice != null)
+        foreach (GameObject item in pirates)
         {
-            if (isFloating)
+            GameObject root = GetDroppedRoot(item.transform);
+
+            if (root != null)
+                uniqueRoots.Add(root);
+        }
+
+        return new List<GameObject>(uniqueRoots);
+    }
+
+    private GameObject GetDroppedRoot(Transform current)
+    {
+        GameObject root = null;
+
+        while (current != null)
+        {
+            if (current.CompareTag("DroppedCrate") ||
+                current.CompareTag("DroppedPirate"))
             {
-                juice.StartFloating();
+                root = current.gameObject;
+            }
+
+            current = current.parent;
+        }
+
+        return root;
+    }
+
+    // =========================================================
+    // DETECÇÃO REAL DE APOIO
+    // =========================================================
+
+    private Collider GetPlayerCollider()
+    {
+        if (playerBodyCollider != null)
+            return playerBodyCollider;
+
+        if (player == null)
+            return null;
+
+        playerBodyCollider = player.GetComponent<Collider>();
+
+        if (playerBodyCollider == null)
+            playerBodyCollider =
+                player.GetComponentInChildren<Collider>();
+
+        return playerBodyCollider;
+    }
+
+    private bool TryGetSupportBelowPlayer(
+        out RaycastHit bestHit,
+        HashSet<GameObject> allowedDroppedRoots = null,
+        bool requireDroppedObject = false)
+    {
+        bestHit = default;
+
+        if (player == null)
+            return false;
+
+        Collider body = GetPlayerCollider();
+
+        float feetY = body != null
+            ? body.bounds.min.y
+            : player.transform.position.y;
+
+        Vector3 rayOrigin = body != null
+            ? new Vector3(
+                body.bounds.center.x,
+                feetY + supportRayStartOffset,
+                body.bounds.center.z
+            )
+            : player.transform.position +
+              Vector3.up * supportRayStartOffset;
+
+        float rayDistance =
+            supportProbeDistance + supportRayStartOffset;
+
+        RaycastHit[] hits = Physics.RaycastAll(
+            rayOrigin,
+            Vector3.down,
+            rayDistance,
+            Physics.DefaultRaycastLayers,
+            QueryTriggerInteraction.Ignore
+        );
+
+        float closestDistance = float.MaxValue;
+        bool foundSupport = false;
+
+        Collider waterCollider = GetComponent<Collider>();
+
+        foreach (RaycastHit hit in hits)
+        {
+            Collider hitCollider = hit.collider;
+
+            if (hitCollider == null)
+                continue;
+
+            // Ignora o próprio player.
+            if (hitCollider.transform == player.transform ||
+                hitCollider.transform.IsChildOf(player.transform))
+            {
+                continue;
+            }
+
+            // Ignora a água.
+            if (waterCollider != null &&
+                hitCollider == waterCollider)
+            {
+                continue;
+            }
+
+            if (hitCollider.GetComponentInParent<SeaTideController>() != null)
+                continue;
+
+            // Confere a distância entre os pés e a superfície atingida.
+            float verticalGap = feetY - hit.point.y;
+
+            if (verticalGap < -supportMaxPenetration ||
+                verticalGap > supportProbeDistance)
+            {
+                continue;
+            }
+
+            GameObject droppedRoot =
+                GetDroppedRoot(hitCollider.transform);
+
+            if (droppedRoot != null)
+            {
+                // Para acompanhar a maré, exige um objeto que esteja se movendo.
+                if (allowedDroppedRoots != null &&
+                    !allowedDroppedRoots.Contains(droppedRoot))
+                {
+                    continue;
+                }
             }
             else
             {
-                juice.StopFloating();
+                // Se estamos procurando uma plataforma flutuante,
+                // o chão comum não pode ser escolhido.
+                if (requireDroppedObject || allowedDroppedRoots != null)
+                    continue;
+
+                // Chão comum é válido, desde que não seja água.
+                BlockTile tile =
+                    hitCollider.GetComponentInParent<BlockTile>();
+
+                if (tile == null || tile.isWaterTile)
+                    continue;
+            }
+
+            if (hit.distance < closestDistance)
+            {
+                closestDistance = hit.distance;
+                bestHit = hit;
+                foundSupport = true;
             }
         }
+
+        return foundSupport;
     }
+
+    private GameObject FindPlayerDroppedSupport(
+        HashSet<GameObject> allowedPlatforms)
+    {
+        if (!TryGetSupportBelowPlayer(
+                out RaycastHit hit,
+                allowedPlatforms,
+                requireDroppedObject: true))
+        {
+            return null;
+        }
+
+        return GetDroppedRoot(hit.collider.transform);
+    }
+
+    // =========================================================
+    // ATUALIZAÇÃO DOS OBJETOS
+    // =========================================================
+
+    private void UpdateObjectTileData(
+        GameObject obj,
+        Vector3 newWorldPosition,
+        bool isFloating)
+    {
+        if (obj == null)
+            return;
+
+        BlockTile tile = obj.GetComponent<BlockTile>();
+
+        if (tile != null && tile.data != null)
+        {
+            Vector3Int newGridPosition =
+                Vector3Int.RoundToInt(newWorldPosition);
+
+            tile.Setup(newGridPosition, tile.data);
+        }
+
+        PirateJuice juice =
+            obj.GetComponentInChildren<PirateJuice>();
+
+        if (juice != null)
+        {
+            if (isFloating)
+                juice.StartFloating();
+            else
+                juice.StopFloating();
+        }
+    }
+
+    private float GetWaterSurfaceY()
+    {
+        Collider waterCollider = GetComponent<Collider>();
+
+        if (waterCollider != null)
+            return waterCollider.bounds.max.y;
+
+        return transform.position.y;
+    }
+
+    // =========================================================
+    // SEGURANÇA DO PLAYER
+    // =========================================================
 
     private void CheckPlayerSafety()
     {
         if (player == null)
-        {
             player = FindFirstObjectByType<PlayerController>();
-            if (player == null) return;
-        }
 
-        Collider waterCol = GetComponent<Collider>();
-        Collider playerCol = player.GetComponentInChildren<Collider>();
-
-        bool isSubmerged = false;
-
-        if (waterCol != null && playerCol != null)
+        if (player == null)
         {
-            isSubmerged = waterCol.bounds.Intersects(playerCol.bounds);
-        }
-
-        float waterSurfaceY = waterCol != null ? waterCol.bounds.max.y : transform.position.y;
-        float playerFeetY = player.transform.position.y;
-
-        if (isSubmerged || (waterSurfaceY - playerFeetY) >= drownHeightThreshold)
-        {
-            player.DrownInWater();
-        }
-        else
-        {
-            remainingClicks = clicksToChangeTide;
             isTransitioning = false;
-            player.SetInputLock(false);
+            return;
         }
+
+        /*
+         * PRIMEIRO: verifica se existe algo sólido embaixo.
+         * Pode ser chão normal, pirata ou caixa.
+         */
+        bool hasSupport = TryGetSupportBelowPlayer(
+            out RaycastHit supportHit
+        );
+
+        if (!hasSupport)
+        {
+            isTransitioning = false;
+
+            // Não permite que o player permaneça suspenso no ar.
+            player.DrownInWater();
+            return;
+        }
+
+        Collider body = GetPlayerCollider();
+
+        float playerFeetY = body != null
+            ? body.bounds.min.y
+            : player.transform.position.y;
+
+        float waterSurfaceY = GetWaterSurfaceY();
+
+        bool isSubmerged =
+            (waterSurfaceY - playerFeetY) >= drownHeightThreshold;
+
+        if (isSubmerged)
+        {
+            isTransitioning = false;
+            player.DrownInWater();
+            return;
+        }
+
+        // Player tem apoio e não está submerso.
+        remainingClicks = clicksToChangeTide;
+        isTransitioning = false;
+
+        player.SetInputLock(false);
+
+        UpdateTideUI();
     }
 
-    public int GetRemainingClicks() => remainingClicks;
+    // =========================================================
+    // GETTERS
+    // =========================================================
+
+    public int GetRemainingClicks()
+    {
+        return remainingClicks;
+    }
+
     public bool IsHighTide => isHighTide;
 }
