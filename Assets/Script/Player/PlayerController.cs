@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
@@ -10,9 +11,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float jumpHeight = 0.4f;
     [SerializeField] private LayerMask tileLayer;
-
-    [Header("Configurações de Transição")]
-    [SerializeField] private string nomeCenaMenu = "Menu";
 
     [Header("Efeitos Visuais / Partículas")]
     [SerializeField] private ParticleSystem dustParticles;
@@ -227,7 +225,7 @@ public class PlayerController : MonoBehaviour
 
         yield return new WaitForSeconds(1.0f);
 
-        ReturnToMenu();
+        RestartCurrentScene();
     }
 
     private IEnumerator SinkInWaterRoutine()
@@ -275,18 +273,20 @@ public class PlayerController : MonoBehaviour
 
         yield return new WaitForSeconds(0.6f);
 
-        ReturnToMenu();
+        RestartCurrentScene();
     }
 
-    private void ReturnToMenu()
+    private void RestartCurrentScene()
     {
+        string currentSceneName = SceneManager.GetActiveScene().name;
+
         if (TransitionManager.Instance != null)
         {
-            TransitionManager.Instance.CarregarCena(nomeCenaMenu);
+            TransitionManager.Instance.CarregarCena(currentSceneName);
         }
         else
         {
-            UnityEngine.SceneManagement.SceneManager.LoadScene(nomeCenaMenu);
+            SceneManager.LoadScene(currentSceneName);
         }
     }
 

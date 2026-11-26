@@ -6,19 +6,22 @@ public class IslandCrabController : MonoBehaviour
     [SerializeField] private Transform playerTransform;
     [SerializeField] private string playerTag = "Player";
 
-    [Header("Velocidades")]
+    [Header("Velocidades e Curva")]
     [SerializeField] private float wanderSpeed = 1.6f;
     [SerializeField] private float fleeSpeed = 3.4f;
-    [SerializeField] private float turnSpeed = 12f;
+    [SerializeField] private float wanderSteeringSpeed = 2.2f;
+    [SerializeField] private float fleeSteeringSpeed = 5.0f;
+    [SerializeField] private float bodyTurnSpeed = 4.5f;
 
     [Header("Patrulha Contínua pela Ilha")]
     [SerializeField] private float wanderRadius = 5.0f;
-    [SerializeField] private float minStepDistance = 1.2f;
+    [SerializeField] private float minStepDistance = 1.5f;
+    [SerializeField] private float targetSwitchDistance = 0.65f;
 
     [Header("Fuga do Player (Flee)")]
     [SerializeField] private float fleeTriggerDistance = 2.6f;
     [SerializeField] private float fleeSafeDistance = 4.2f;
-    [SerializeField] private float fleeStepDistance = 2.0f;
+    [SerializeField] private float fleeStepDistance = 2.2f;
 
     [Header("Animação Procedural (Andar de Lado)")]
     [SerializeField] private Transform visualModel;
@@ -28,6 +31,7 @@ public class IslandCrabController : MonoBehaviour
     [SerializeField] private float stepHopHeight = 0.05f;
 
     private Vector3 targetPosition;
+    private Vector3 currentMoveDir;
     private float surfaceY;
     private int groundGridY;
 
@@ -57,6 +61,13 @@ public class IslandCrabController : MonoBehaviour
         surfaceY = transform.position.y;
         groundGridY = Mathf.RoundToInt(surfaceY) - 1;
         targetPosition = transform.position;
+
+        currentMoveDir = Quaternion.Euler(0f, -sidewaysRotationOffset, 0f) * transform.forward;
+        currentMoveDir.y = 0f;
+        if (currentMoveDir.sqrMagnitude < 0.001f)
+            currentMoveDir = Vector3.right;
+        else
+            currentMoveDir.Normalize();
 
         PickNextWanderTarget();
     }
@@ -106,7 +117,7 @@ public class IslandCrabController : MonoBehaviour
         Vector3 toTarget = targetPosition - transform.position;
         toTarget.y = 0f;
 
-        if (toTarget.sqrMagnitude <= 0.04f)
+        if (toTarget.sqrMagnitude <= targetSwitchDistance * targetSwitchDistance)
         {
             PickFleeTarget();
             toTarget = targetPosition - transform.position;
@@ -115,7 +126,7 @@ public class IslandCrabController : MonoBehaviour
 
         if (toTarget.sqrMagnitude > 0.001f)
         {
-            MoveTowards(targetPosition, fleeSpeed);
+            MoveAndSteerTowards(targetPosition, fleeSpeed, fleeSteeringSpeed);
         }
         else
         {
@@ -128,7 +139,7 @@ public class IslandCrabController : MonoBehaviour
         Vector3 toTarget = targetPosition - transform.position;
         toTarget.y = 0f;
 
-        if (toTarget.sqrMagnitude <= 0.04f)
+        if (toTarget.sqrMagnitude <= targetSwitchDistance * targetSwitchDistance)
         {
             PickNextWanderTarget();
             toTarget = targetPosition - transform.position;
@@ -137,7 +148,7 @@ public class IslandCrabController : MonoBehaviour
 
         if (toTarget.sqrMagnitude > 0.001f)
         {
-            MoveTowards(targetPosition, wanderSpeed);
+            MoveAndSteerTowards(targetPosition, wanderSpeed, wanderSteeringSpeed);
         }
         else
         {
@@ -145,38 +156,75 @@ public class IslandCrabController : MonoBehaviour
         }
     }
 
-    private void MoveTowards(Vector3 destination, float speed)
+    private void MoveAndSteerTowards(Vector3 destination, float speed, float steeringRate)
     {
-        Vector3 direction = destination - transform.position;
-        direction.y = 0f;
+        Vector3 desiredDir = destination - transform.position;
+        desiredDir.y = 0f;
 
-        if (direction.sqrMagnitude < 0.0001f)
+        if (desiredDir.sqrMagnitude < 0.0001f)
         {
             isMovingNow = false;
             return;
         }
 
-        Vector3 moveDir = direction.normalized;
-        Vector3 nextPos = transform.position + moveDir * (speed * Time.deltaTime);
+        desiredDir.Normalize();
+
+        currentMoveDir = Vector3.RotateTowards(
+            currentMoveDir,
+            desiredDir,
+            steeringRate * Time.deltaTime,
+            0f
+        );
+        currentMoveDir.y = 0f;
+        if (currentMoveDir.sqrMagnitude > 0.0001f)
+            currentMoveDir.Normalize();
+        else
+            currentMoveDir = desiredDir;
+
+        Vector3 nextPos = transform.position + currentMoveDir * (speed * Time.deltaTime);
         nextPos.y = surfaceY;
 
         if (!IsWalkableSandPosition(nextPos))
         {
-            isMovingNow = false;
             if (isFleeing) PickFleeTarget();
             else PickNextWanderTarget();
-            return;
+
+            Vector3 fallbackDir = targetPosition - transform.position;
+            fallbackDir.y = 0f;
+            if (fallbackDir.sqrMagnitude > 0.001f)
+            {
+                currentMoveDir = Vector3.RotateTowards(
+                    currentMoveDir,
+                    fallbackDir.normalized,
+                    steeringRate * 2.5f * Time.deltaTime,
+                    0f
+                ).normalized;
+
+                nextPos = transform.position + currentMoveDir * (speed * Time.deltaTime);
+                nextPos.y = surfaceY;
+            }
+
+            if (!IsWalkableSandPosition(nextPos))
+            {
+                isMovingNow = false;
+                return;
+            }
         }
 
         isMovingNow = true;
         transform.position = nextPos;
 
-        Quaternion lookRot = Quaternion.LookRotation(moveDir) * Quaternion.Euler(0f, sidewaysRotationOffset, 0f);
-        transform.rotation = Quaternion.Slerp(transform.rotation, lookRot, turnSpeed * Time.deltaTime);
+        Quaternion targetRot = Quaternion.LookRotation(currentMoveDir) * Quaternion.Euler(0f, sidewaysRotationOffset, 0f);
+        float effectiveBodyTurn = isFleeing ? bodyTurnSpeed * 1.6f : bodyTurnSpeed;
+        transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, effectiveBodyTurn * Time.deltaTime);
     }
 
     private void PickNextWanderTarget()
     {
+        Vector3 bestCandidate = transform.position;
+        float bestScore = float.MinValue;
+        bool foundAny = false;
+
         for (int i = 0; i < 20; i++)
         {
             Vector2 randomDir = Random.insideUnitCircle.normalized;
@@ -191,9 +239,22 @@ public class IslandCrabController : MonoBehaviour
 
             if (IsPathClearOnIsland(transform.position, candidate))
             {
-                targetPosition = candidate;
-                return;
+                Vector3 dirToCandidate = (candidate - transform.position).normalized;
+                float alignment = Vector3.Dot(currentMoveDir, dirToCandidate);
+
+                if (!foundAny || alignment > bestScore)
+                {
+                    bestScore = alignment;
+                    bestCandidate = candidate;
+                    foundAny = true;
+                }
             }
+        }
+
+        if (foundAny)
+        {
+            targetPosition = bestCandidate;
+            return;
         }
 
         float step = 1.0f;

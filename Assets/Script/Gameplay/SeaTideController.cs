@@ -1,4 +1,3 @@
-
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -33,9 +32,9 @@ public class SeaTideController : MonoBehaviour
     [SerializeField] private float drownHeightThreshold = 0.4f;
 
     [Header("Detecção de Apoio")]
-    [SerializeField] private float supportProbeDistance = 0.35f;
-    [SerializeField] private float supportRayStartOffset = 0.05f;
-    [SerializeField] private float supportMaxPenetration = 0.15f;
+    [SerializeField] private float supportProbeDistance = 0.85f;
+    [SerializeField] private float supportRayStartOffset = 0.2f;
+    [SerializeField] private float supportMaxPenetration = 0.4f;
 
     private Ship sceneShip;
 
@@ -74,8 +73,6 @@ public class SeaTideController : MonoBehaviour
         UpdateTideUI();
     }
 
-
-
     public void RegisterPlayerMoveClick()
     {
         if (!isTideActive || isTransitioning)
@@ -104,7 +101,6 @@ public class SeaTideController : MonoBehaviour
         tideClicksText.text = $"{prefix}{remainingClicks}";
     }
 
-
     private IEnumerator RiseTideRoutine()
     {
         isTransitioning = true;
@@ -132,7 +128,6 @@ public class SeaTideController : MonoBehaviour
 
         float waterDeltaY =
             targetWaterPosition.y - startWaterPosition.y;
-
 
         float currentWaterSurface = GetWaterSurfaceY();
 
@@ -205,7 +200,6 @@ public class SeaTideController : MonoBehaviour
                 );
             }
 
-
             MovePlayerWithPlatform(
                 playerSupport,
                 ref lastSupportPosition
@@ -233,15 +227,18 @@ public class SeaTideController : MonoBehaviour
             );
         }
 
+        MovePlayerWithPlatform(
+            playerSupport,
+            ref lastSupportPosition
+        );
+
         if (GridManager.Instance != null)
             GridManager.Instance.ScanGrid();
 
         isHighTide = true;
 
-        CheckPlayerSafety();
+        CheckPlayerSafety(playerSupport != null);
     }
-
-
 
     private IEnumerator LowerTideRoutine()
     {
@@ -369,6 +366,11 @@ public class SeaTideController : MonoBehaviour
             );
         }
 
+        MovePlayerWithPlatform(
+            playerSupport,
+            ref lastSupportPosition
+        );
+
         floatingObjectsOriginalPositions.Clear();
 
         if (GridManager.Instance != null)
@@ -379,7 +381,7 @@ public class SeaTideController : MonoBehaviour
 
         UpdateTideUI();
 
-        CheckPlayerSafety();
+        CheckPlayerSafety(false);
     }
 
     private void MovePlayerWithPlatform(
@@ -387,9 +389,6 @@ public class SeaTideController : MonoBehaviour
         ref Vector3 lastSupportPosition)
     {
         if (player == null || support == null)
-            return;
-
-        if (support == null)
             return;
 
         Vector3 currentSupportPosition = support.transform.position;
@@ -401,7 +400,6 @@ public class SeaTideController : MonoBehaviour
 
         lastSupportPosition = currentSupportPosition;
     }
-
 
     private List<GameObject> BuildFloatingTargets(
         float targetFloatY,
@@ -527,7 +525,6 @@ public class SeaTideController : MonoBehaviour
         return root;
     }
 
-
     private Collider GetPlayerCollider()
     {
         if (playerBodyCollider != null)
@@ -629,7 +626,6 @@ public class SeaTideController : MonoBehaviour
             }
             else
             {
-
                 if (requireDroppedObject || allowedDroppedRoots != null)
                     continue;
 
@@ -654,6 +650,41 @@ public class SeaTideController : MonoBehaviour
     private GameObject FindPlayerDroppedSupport(
         HashSet<GameObject> allowedPlatforms)
     {
+        if (player == null)
+            return null;
+
+        Vector3 pPos = player.transform.position;
+        int playerX = Mathf.RoundToInt(pPos.x);
+        int playerZ = Mathf.RoundToInt(pPos.z);
+
+        GameObject highestColumnSupport = null;
+        float highestY = float.MinValue;
+
+        if (allowedPlatforms != null)
+        {
+            foreach (GameObject candidate in allowedPlatforms)
+            {
+                if (candidate == null)
+                    continue;
+
+                Vector3 cPos = candidate.transform.position;
+                if (Mathf.RoundToInt(cPos.x) == playerX &&
+                    Mathf.RoundToInt(cPos.z) == playerZ &&
+                    cPos.y <= pPos.y + 0.25f &&
+                    cPos.y >= pPos.y - 1.5f)
+                {
+                    if (cPos.y > highestY)
+                    {
+                        highestY = cPos.y;
+                        highestColumnSupport = candidate;
+                    }
+                }
+            }
+        }
+
+        if (highestColumnSupport != null)
+            return highestColumnSupport;
+
         if (!TryGetSupportBelowPlayer(
                 out RaycastHit hit,
                 allowedPlatforms,
@@ -664,8 +695,6 @@ public class SeaTideController : MonoBehaviour
 
         return GetDroppedRoot(hit.collider.transform);
     }
-
-
 
     private void UpdateObjectTileData(
         GameObject obj,
@@ -707,9 +736,7 @@ public class SeaTideController : MonoBehaviour
         return transform.position.y;
     }
 
-
-
-    private void CheckPlayerSafety()
+    private void CheckPlayerSafety(bool rodeDroppedSupport = false)
     {
         if (player == null)
             player = FindFirstObjectByType<PlayerController>();
@@ -720,6 +747,14 @@ public class SeaTideController : MonoBehaviour
             return;
         }
 
+        if (rodeDroppedSupport)
+        {
+            remainingClicks = clicksToChangeTide;
+            isTransitioning = false;
+            player.SetInputLock(false);
+            UpdateTideUI();
+            return;
+        }
 
         bool hasSupport = TryGetSupportBelowPlayer(
             out RaycastHit supportHit
@@ -730,6 +765,15 @@ public class SeaTideController : MonoBehaviour
             isTransitioning = false;
 
             player.DrownInWater();
+            return;
+        }
+
+        if (supportHit.collider != null && GetDroppedRoot(supportHit.collider.transform) != null)
+        {
+            remainingClicks = clicksToChangeTide;
+            isTransitioning = false;
+            player.SetInputLock(false);
+            UpdateTideUI();
             return;
         }
 

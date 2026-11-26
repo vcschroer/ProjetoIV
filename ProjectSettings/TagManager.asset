@@ -6,6 +6,7 @@ TagManager:
   tags:
   - DroppedPirate
   - DroppedCrate
+  - grass
   layers:
   - Default
   - TransparentFX
