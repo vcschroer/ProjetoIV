@@ -43,8 +43,6 @@ public class GridManager : MonoBehaviour
         }
     }
 
-
-
     public void AddTile(BlockTile tile)
     {
         Vector3Int cellPos = Vector3Int.RoundToInt(tile.transform.position);
@@ -99,7 +97,13 @@ public class GridManager : MonoBehaviour
         return tile;
     }
 
+    public bool HasWalkableTileDirectlyAbove(BlockTile tile)
+    {
+        if (tile == null) return false;
 
+        BlockTile tileAbove = GetTileAt(tile.gridPosition + Vector3Int.up);
+        return tileAbove != null && tileAbove.data != null && tileAbove.data.isWalkable;
+    }
 
     public List<Vector3Int> Find2DPathWithHeightLimit(Vector2Int startXZ, Vector2Int targetXZ, int maxStepHeight = 1)
     {
@@ -176,7 +180,6 @@ public class GridManager : MonoBehaviour
         return nearest;
     }
 
-
     public List<Vector3Int> FindPath(Vector3Int start, Vector3Int target, int currentStackCount = 0)
     {
         List<Vector3Int> frontier = new List<Vector3Int>();
@@ -240,6 +243,9 @@ public class GridManager : MonoBehaviour
         BlockTile groundTile = GetTileAt(groundPos);
 
         if (groundTile == null || groundTile.data == null || !groundTile.data.isWalkable)
+            return false;
+
+        if (HasWalkableTileDirectlyAbove(groundTile))
             return false;
 
         if (GetTileAt(to) != null)

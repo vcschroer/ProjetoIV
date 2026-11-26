@@ -74,9 +74,7 @@ public class SeaTideController : MonoBehaviour
         UpdateTideUI();
     }
 
-    // =========================================================
-    // CLIQUES
-    // =========================================================
+
 
     public void RegisterPlayerMoveClick()
     {
@@ -106,22 +104,17 @@ public class SeaTideController : MonoBehaviour
         tideClicksText.text = $"{prefix}{remainingClicks}";
     }
 
-    // =========================================================
-    // SUBIDA DA MARÉ
-    // =========================================================
 
     private IEnumerator RiseTideRoutine()
     {
         isTransitioning = true;
 
-        // Dá tempo para o movimento do último clique começar.
         yield return null;
 
         if (player != null)
         {
             player.SetInputLock(true);
 
-            // Nunca calcula o apoio enquanto o player ainda está andando.
             while (player.IsMoving)
                 yield return null;
         }
@@ -140,16 +133,12 @@ public class SeaTideController : MonoBehaviour
         float waterDeltaY =
             targetWaterPosition.y - startWaterPosition.y;
 
-        /*
-         * Usa a superfície REAL do collider da água.
-         * Não presume que o transform da água seja sua superfície.
-         */
+
         float currentWaterSurface = GetWaterSurfaceY();
 
         float targetFloatY =
             currentWaterSurface + waterDeltaY + floatSurfaceOffset;
 
-        // Guarda posições iniciais e finais dos objetos.
         List<GameObject> objectsToFloat =
             BuildFloatingTargets(
                 targetFloatY,
@@ -165,7 +154,6 @@ public class SeaTideController : MonoBehaviour
                 floatingObjectsOriginalPositions[obj] = startPositions[obj];
         }
 
-        // Detecta somente a plataforma realmente embaixo do player.
         HashSet<GameObject> movingRoots =
             new HashSet<GameObject>(objectsToFloat);
 
@@ -192,14 +180,12 @@ public class SeaTideController : MonoBehaviour
                 Mathf.Clamp01(elapsed / transitionDuration)
             );
 
-            // Água.
             transform.position = Vector3.Lerp(
                 startWaterPosition,
                 targetWaterPosition,
                 progress
             );
 
-            // Navio.
             if (sceneShip != null)
             {
                 sceneShip.SetTideOffset(
@@ -207,7 +193,6 @@ public class SeaTideController : MonoBehaviour
                 );
             }
 
-            // Caixas e piratas.
             foreach (GameObject obj in objectsToFloat)
             {
                 if (obj == null)
@@ -220,11 +205,7 @@ public class SeaTideController : MonoBehaviour
                 );
             }
 
-            /*
-             * PLAYER:
-             * Move apenas a diferença que a plataforma percorreu
-             * neste frame. Não usa posição inicial salva.
-             */
+
             MovePlayerWithPlatform(
                 playerSupport,
                 ref lastSupportPosition
@@ -233,13 +214,11 @@ public class SeaTideController : MonoBehaviour
             yield return null;
         }
 
-        // Finaliza água e navio.
         transform.position = targetWaterPosition;
 
         if (sceneShip != null)
             sceneShip.SetTideOffset(riseAmount);
 
-        // Finaliza os objetos.
         foreach (GameObject obj in objectsToFloat)
         {
             if (obj == null)
@@ -259,13 +238,10 @@ public class SeaTideController : MonoBehaviour
 
         isHighTide = true;
 
-        // Agora também exige apoio para o player permanecer.
         CheckPlayerSafety();
     }
 
-    // =========================================================
-    // DESCIDA DA MARÉ
-    // =========================================================
+
 
     private IEnumerator LowerTideRoutine()
     {
@@ -309,7 +285,6 @@ public class SeaTideController : MonoBehaviour
             startPositions[obj] = obj.transform.position;
         }
 
-        // Detecta o apoio antes de começar a descer.
         HashSet<GameObject> movingRoots =
             new HashSet<GameObject>(activeFloatingObjects);
 
@@ -336,14 +311,12 @@ public class SeaTideController : MonoBehaviour
                 Mathf.Clamp01(elapsed / transitionDuration)
             );
 
-            // Água.
             transform.position = Vector3.Lerp(
                 startWaterPosition,
                 targetWaterPosition,
                 progress
             );
 
-            // Navio.
             if (sceneShip != null)
             {
                 sceneShip.SetTideOffset(
@@ -351,7 +324,6 @@ public class SeaTideController : MonoBehaviour
                 );
             }
 
-            // Caixas e piratas retornam às posições originais.
             foreach (GameObject obj in activeFloatingObjects)
             {
                 if (obj == null)
@@ -367,7 +339,6 @@ public class SeaTideController : MonoBehaviour
                 );
             }
 
-            // Player acompanha a descida da plataforma.
             MovePlayerWithPlatform(
                 playerSupport,
                 ref lastSupportPosition
@@ -381,7 +352,6 @@ public class SeaTideController : MonoBehaviour
         if (sceneShip != null)
             sceneShip.SetTideOffset(0f);
 
-        // Finaliza todas as posições.
         foreach (GameObject obj in activeFloatingObjects)
         {
             if (obj == null)
@@ -409,17 +379,8 @@ public class SeaTideController : MonoBehaviour
 
         UpdateTideUI();
 
-        /*
-         * IMPORTANTE:
-         * Não desbloqueia o player automaticamente.
-         * Primeiro verifica se ele realmente tem apoio.
-         */
         CheckPlayerSafety();
     }
-
-    // =========================================================
-    // MOVIMENTO DO PLAYER JUNTO COM A PLATAFORMA
-    // =========================================================
 
     private void MovePlayerWithPlatform(
         GameObject support,
@@ -441,9 +402,6 @@ public class SeaTideController : MonoBehaviour
         lastSupportPosition = currentSupportPosition;
     }
 
-    // =========================================================
-    // CRIAÇÃO DAS POSIÇÕES DE FLUTUAÇÃO
-    // =========================================================
 
     private List<GameObject> BuildFloatingTargets(
         float targetFloatY,
@@ -460,7 +418,6 @@ public class SeaTideController : MonoBehaviour
         Dictionary<Vector2Int, List<GameObject>> columns =
             new Dictionary<Vector2Int, List<GameObject>>();
 
-        // Agrupa por coluna X/Z.
         foreach (GameObject obj in allObjects)
         {
             if (obj == null)
@@ -481,7 +438,6 @@ public class SeaTideController : MonoBehaviour
         {
             float lowestY = float.MaxValue;
 
-            // Descobre a base da pilha.
             foreach (GameObject obj in column)
             {
                 if (obj == null)
@@ -496,20 +452,9 @@ public class SeaTideController : MonoBehaviour
             if (lowestY == float.MaxValue)
                 continue;
 
-            /*
-             * Se a base já está na superfície ou acima dela,
-             * essa coluna não precisa subir.
-             */
             if (lowestY >= targetFloatY - 0.05f)
                 continue;
 
-            /*
-             * A base vai exatamente até targetFloatY.
-             * TODOS os outros objetos recebem o MESMO deslocamento.
-             *
-             * Assim, uma pilha não é achatada e nenhum objeto
-             * recebe um bloco extra por conta própria.
-             */
             float columnOffset = targetFloatY - lowestY;
 
             foreach (GameObject obj in column)
@@ -582,9 +527,6 @@ public class SeaTideController : MonoBehaviour
         return root;
     }
 
-    // =========================================================
-    // DETECÇÃO REAL DE APOIO
-    // =========================================================
 
     private Collider GetPlayerCollider()
     {
@@ -651,14 +593,12 @@ public class SeaTideController : MonoBehaviour
             if (hitCollider == null)
                 continue;
 
-            // Ignora o próprio player.
             if (hitCollider.transform == player.transform ||
                 hitCollider.transform.IsChildOf(player.transform))
             {
                 continue;
             }
 
-            // Ignora a água.
             if (waterCollider != null &&
                 hitCollider == waterCollider)
             {
@@ -668,7 +608,6 @@ public class SeaTideController : MonoBehaviour
             if (hitCollider.GetComponentInParent<SeaTideController>() != null)
                 continue;
 
-            // Confere a distância entre os pés e a superfície atingida.
             float verticalGap = feetY - hit.point.y;
 
             if (verticalGap < -supportMaxPenetration ||
@@ -682,7 +621,6 @@ public class SeaTideController : MonoBehaviour
 
             if (droppedRoot != null)
             {
-                // Para acompanhar a maré, exige um objeto que esteja se movendo.
                 if (allowedDroppedRoots != null &&
                     !allowedDroppedRoots.Contains(droppedRoot))
                 {
@@ -691,12 +629,10 @@ public class SeaTideController : MonoBehaviour
             }
             else
             {
-                // Se estamos procurando uma plataforma flutuante,
-                // o chão comum não pode ser escolhido.
+
                 if (requireDroppedObject || allowedDroppedRoots != null)
                     continue;
 
-                // Chão comum é válido, desde que não seja água.
                 BlockTile tile =
                     hitCollider.GetComponentInParent<BlockTile>();
 
@@ -729,9 +665,7 @@ public class SeaTideController : MonoBehaviour
         return GetDroppedRoot(hit.collider.transform);
     }
 
-    // =========================================================
-    // ATUALIZAÇÃO DOS OBJETOS
-    // =========================================================
+
 
     private void UpdateObjectTileData(
         GameObject obj,
@@ -773,9 +707,7 @@ public class SeaTideController : MonoBehaviour
         return transform.position.y;
     }
 
-    // =========================================================
-    // SEGURANÇA DO PLAYER
-    // =========================================================
+
 
     private void CheckPlayerSafety()
     {
@@ -788,10 +720,7 @@ public class SeaTideController : MonoBehaviour
             return;
         }
 
-        /*
-         * PRIMEIRO: verifica se existe algo sólido embaixo.
-         * Pode ser chão normal, pirata ou caixa.
-         */
+
         bool hasSupport = TryGetSupportBelowPlayer(
             out RaycastHit supportHit
         );
@@ -800,7 +729,6 @@ public class SeaTideController : MonoBehaviour
         {
             isTransitioning = false;
 
-            // Não permite que o player permaneça suspenso no ar.
             player.DrownInWater();
             return;
         }
@@ -823,7 +751,6 @@ public class SeaTideController : MonoBehaviour
             return;
         }
 
-        // Player tem apoio e não está submerso.
         remainingClicks = clicksToChangeTide;
         isTransitioning = false;
 
@@ -831,10 +758,6 @@ public class SeaTideController : MonoBehaviour
 
         UpdateTideUI();
     }
-
-    // =========================================================
-    // GETTERS
-    // =========================================================
 
     public int GetRemainingClicks()
     {

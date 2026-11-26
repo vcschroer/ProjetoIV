@@ -63,8 +63,7 @@ public class KeyItem : MonoBehaviour
             return;
         }
 
-        if (Mouse.current != null &&
-           (Mouse.current.leftButton.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame))
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
             TryCollectKey();
         }
@@ -106,7 +105,6 @@ public class KeyItem : MonoBehaviour
             itemCollider.enabled = false;
         }
 
-        // Toca o som de pegar a chave (CHAVE PEGAR) na posição exata do item
         FMODUnity.RuntimeManager.PlayOneShot("event:/SFX/CHAVE PEGAR", transform.position);
 
         if (targetChest != null)

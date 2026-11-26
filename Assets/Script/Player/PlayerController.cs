@@ -55,6 +55,11 @@ public class PlayerController : MonoBehaviour
 
         if (Physics.Raycast(ray, out RaycastHit hit, 100f))
         {
+            if (hit.collider.GetComponentInParent<KeyItem>() != null)
+            {
+                return;
+            }
+
             BlockTile clickedTile = hit.collider.GetComponentInParent<BlockTile>();
 
             if (clickedTile != null)
